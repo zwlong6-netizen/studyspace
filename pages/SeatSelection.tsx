@@ -210,6 +210,11 @@ export const SeatSelection: React.FC = () => {
     today.setDate(today.getDate() + selectedDateIndex);
     const dateStr = `${today.getMonth() + 1}月${today.getDate()}日`;
 
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const fullDate = `${year}-${month}-${day}`;
+
     navigate('/confirm-order', {
       state: {
         storeName,
@@ -217,6 +222,7 @@ export const SeatSelection: React.FC = () => {
         seatId: selectedSeatId || selectedSeat,
         seatLabel: selectedSeat,
         date: dateStr,
+        fullDate, // 传递标准格式日期 YYYY-MM-DD
         startTime: formatTime(startTime),
         endTime: formatTime(endTime),
         duration,

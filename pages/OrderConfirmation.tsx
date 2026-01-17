@@ -19,6 +19,7 @@ export const OrderConfirmation: React.FC = () => {
     endTime?: string;
     duration?: number;
     price?: string;
+    fullDate?: string;
   } | null;
 
   const {
@@ -67,8 +68,12 @@ export const OrderConfirmation: React.FC = () => {
     setLoading(true);
     try {
       // 格式化日期为 YYYY-MM-DD
-      const today = new Date();
-      const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      // 格式化日期为 YYYY-MM-DD (优先使用传递的 fullDate)
+      let dateStr = state?.fullDate;
+      if (!dateStr) {
+        const today = new Date();
+        dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      }
 
       const response = await ordersApi.createOrder({
         shop_id: storeId,
