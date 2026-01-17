@@ -60,30 +60,32 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 });
 
 // Start server
-app.listen(PORT, () => {
-    console.log('');
-    console.log('╔══════════════════════════════════════════════╗');
-    console.log('║                                              ║');
-    console.log('║       🚀 StudySpace API Server               ║');
-    console.log('║                                              ║');
-    console.log(`║       Running on http://localhost:${PORT}       ║`);
-    console.log('║                                              ║');
-    console.log('╚══════════════════════════════════════════════╝');
-    console.log('');
-    console.log('Available endpoints:');
-    console.log('  GET  /api/health          - Health check');
-    console.log('  POST /api/auth/register   - User registration');
-    console.log('  POST /api/auth/login      - User login');
-    console.log('  GET  /api/auth/profile    - Get user profile');
-    console.log('  GET  /api/shops           - List shops');
-    console.log('  GET  /api/shops/:id       - Shop details');
-    console.log('  GET  /api/shops/:id/seats - Shop seats');
-    console.log('  GET  /api/seats           - List seats');
-    console.log('  GET  /api/seats/:id/schedule - Seat schedule');
-    console.log('  POST /api/orders          - Create order');
-    console.log('  GET  /api/orders          - List orders');
-    console.log('  PATCH /api/orders/:id     - Update order');
-    console.log('');
-});
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log('');
+        console.log('╔══════════════════════════════════════════════╗');
+        console.log('║                                              ║');
+        console.log('║       🚀 StudySpace API Server               ║');
+        console.log('║                                              ║');
+        console.log(`║       Running on http://localhost:${PORT}       ║`);
+        console.log('║                                              ║');
+        console.log('╚══════════════════════════════════════════════╝');
+        console.log('');
+        console.log('Available endpoints:');
+        console.log('  GET  /api/health          - Health check');
+        console.log('  POST /api/auth/register   - User registration');
+        console.log('  POST /api/auth/login      - User login');
+        console.log('  GET  /api/auth/profile    - Get user profile');
+        console.log('  GET  /api/shops           - List shops');
+        console.log('  GET  /api/shops/:id       - Shop details');
+        console.log('  GET  /api/shops/:id/seats - Shop seats');
+        console.log('  GET  /api/seats           - List seats');
+        console.log('  GET  /api/seats/:id/schedule - Seat schedule');
+        console.log('  POST /api/orders          - Create order');
+        console.log('  GET  /api/orders          - List orders');
+        console.log('  PATCH /api/orders/:id     - Update order');
+        console.log('');
+    });
+}
 
 export default app;
