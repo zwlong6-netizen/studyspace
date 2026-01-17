@@ -16,70 +16,12 @@ interface Room {
   description: string;
 }
 
-// 默认店铺数据（当 API 不可用时使用）
-const defaultShop: Shop = {
-  id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-  name: '起航自习室（五道口店）',
-  distance: '0.5km',
-  rating: 4.9,
-  price: 12,
-  location: '海淀区',
-  tags: ['静音', '新风系统', '24H'],
-  image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCYJTWT7fFTFzi0juVmxUcNpwQG1aNtL0j4vw8WFlBe4wWzzM6f6PYb9W6JjiDI56eEAOQmnbNNRI8Y4RUb0Xu4UuaACouqxUaw0IRxrDCwKWrEc6kjFbv1toEvnPNqM-IQqOTr2MzFWZvEZm7TVBR0vvVVFXx1S0-PG5xyfMG3jeEEcN0vhtXhyTaTDTiC4cxVa6-u-AHlHBgjM6fXEmJJDw7v2SPHk82SkX-xqdI-5AQUpsFRI_7YFeagV6cRYxZCuHGOXVJb-wk',
-  review_count: 1284,
-  facilities: ['高速WiFi', '免费饮水', '独立储物柜'],
-  open_time: '00:00',
-  close_time: '23:59',
-  is_24h: true
-};
-
-// 默认房间数据
-const defaultRooms: Room[] = [
-  {
-    id: 'room-1',
-    name: '晨曦阅览室',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCYJTWT7fFTFzi0juVmxUcNpwQG1aNtL0j4vw8WFlBe4wWzzM6f6PYb9W6JjiDI56eEAOQmnbNNRI8Y4RUb0Xu4UuaACouqxUaw0IRxrDCwKWrEc6kjFbv1toEvnPNqM-IQqOTr2MzFWZvEZm7TVBR0vvVVFXx1S0-PG5xyfMG3jeEEcN0vhtXhyTaTDTiC4cxVa6-u-AHlHBgjM6fXEmJJDw7v2SPHk82SkX-xqdI-5AQUpsFRI_7YFeagV6cRYxZCuHGOXVJb-wk',
-    price: 10,
-    availableSeats: 4,
-    totalSeats: 4,
-    tags: ['自然采光', '绿植氛围'],
-    description: '清晨阳光洒入，适合早起学习'
-  },
-  {
-    id: 'room-2',
-    name: '深夜自习厅',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA_FZP1Jvpbtf-uCeCMh3xAj4nN2lAl2gSSUNCTlmF8Gw2S5vS40eFhrynvsBJhcwtGSXZqDa-IIxURasLNWY8jT3WnqfTj6sjCNQJ6wpo4r4P0wtkWaOVCVMqdqenS71_YqFWyqWt333Pdv-dV8VlqhwQvFfwLYq5J_HZ9Ms1_6oeBa9-CTsMLcSfEOEvafi7hOgOHspajMI5fE-NxBOab30aTAFu6RgFR2IhD83xGRcK8swIIazBwyZBu57XrC21-Cz90u_j4dy4',
-    price: 12,
-    availableSeats: 4,
-    totalSeats: 4,
-    tags: ['24H开放', '静音区'],
-    description: '24小时开放，夜猫子专属'
-  },
-  {
-    id: 'room-3',
-    name: '考研冲刺营',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCMhp6Yu_AxrrxAsAodf6i_Ye6ZGxDoH9tIu0DU9dIXH35_NtqF7BEOVjMVw4TAHRp-L-DWcqS5thj1j2dcGFEpgwpg_Z3fa7aF004mKzsP-e-2b_VhKWhTJFQoyTgigYoiirkvpLafInNUYrw2Q6AQ26P6mYldrdy0p6npcHX4I2EOTzhNFgkLhLZUMyXreIkU6lOe3DduhPGGo084AEBj6jqOf-r0ys2NSHyi03Kde1jp5sz1LPrFPTnQfSDTVOmtsMfdqqq77fk',
-    price: 15,
-    availableSeats: 2,
-    totalSeats: 2,
-    tags: ['白板', '计时器', '隔音'],
-    description: '备考专用，配备白板和计时器'
-  }
-];
-
-// 房间图片列表（用于没有图片的房间）
-const roomImages = [
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuCYJTWT7fFTFzi0juVmxUcNpwQG1aNtL0j4vw8WFlBe4wWzzM6f6PYb9W6JjiDI56eEAOQmnbNNRI8Y4RUb0Xu4UuaACouqxUaw0IRxrDCwKWrEc6kjFbv1toEvnPNqM-IQqOTr2MzFWZvEZm7TVBR0vvVVFXx1S0-PG5xyfMG3jeEEcN0vhtXhyTaTDTiC4cxVa6-u-AHlHBgjM6fXEmJJDw7v2SPHk82SkX-xqdI-5AQUpsFRI_7YFeagV6cRYxZCuHGOXVJb-wk',
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuA_FZP1Jvpbtf-uCeCMh3xAj4nN2lAl2gSSUNCTlmF8Gw2S5vS40eFhrynvsBJhcwtGSXZqDa-IIxURasLNWY8jT3WnqfTj6sjCNQJ6wpo4r4P0wtkWaOVCVMqdqenS71_YqFWyqWt333Pdv-dV8VlqhwQvFfwLYq5J_HZ9Ms1_6oeBa9-CTsMLcSfEOEvafi7hOgOHspajMI5fE-NxBOab30aTAFu6RgFR2IhD83xGRcK8swIIazBwyZBu57XrC21-Cz90u_j4dy4',
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuCMhp6Yu_AxrrxAsAodf6i_Ye6ZGxDoH9tIu0DU9dIXH35_NtqF7BEOVjMVw4TAHRp-L-DWcqS5thj1j2dcGFEpgwpg_Z3fa7aF004mKzsP-e-2b_VhKWhTJFQoyTgigYoiirkvpLafInNUYrw2Q6AQ26P6mYldrdy0p6npcHX4I2EOTzhNFgkLhLZUMyXreIkU6lOe3DduhPGGo084AEBj6jqOf-r0ys2NSHyi03Kde1jp5sz1LPrFPTnQfSDTVOmtsMfdqqq77fk',
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuBSQh8P7sZQKwx9ai8eqY6Z9H1RTskQfW9-_25S1UMJJ3sluFys_YqEYrQ98pbEmRjXnb16YS9qPcXiPmUA7qTHMtTlYyqqiZ2IaDoSti1xxKsIjGd5vr9vBCjMf_G701whOGQt24NjCmrk8_XgBj_XsW6JrwYEEvm_jHe3tR4TRH8nA4sijBguNFBnaldSi1C-KMoinQlRrmWVZ13dRApx8JEptXJ936KtNaLh_wFEle8nlrHYsp_gjUHdVxTY3q0sdmU40HydeHU'
-];
-
 // 将 Zone 转换为 Room
-const zoneToRoom = (zone: Zone, index: number): Room => ({
+const zoneToRoom = (zone: Zone): Room => ({
   id: zone.id,
   name: zone.name,
-  image: zone.image || roomImages[index % roomImages.length],
+  // 如果没有图片，使用占位图
+  image: zone.image || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80',
   price: zone.price,
   availableSeats: zone.availableSeats || 0,
   totalSeats: zone.totalSeats || 0,
@@ -120,8 +62,8 @@ export const Home: React.FC = () => {
             shop = shopsResponse.shops[0];
             setCurrentShop(shop);
           } else {
-            shop = defaultShop;
-            setCurrentShop(shop);
+            // No shops found
+            setCurrentShop(null);
           }
         }
 
@@ -131,29 +73,19 @@ export const Home: React.FC = () => {
             const zonesResponse = await shopsApi.getShopZones(shop.id);
             if (zonesResponse.success && zonesResponse.zones.length > 0) {
               // 将 Zone 转换为 Room
-              const roomsFromZones = zonesResponse.zones.map((zone, index) => zoneToRoom(zone, index));
+              const roomsFromZones = zonesResponse.zones.map((zone, index) => zoneToRoom(zone));
               setRooms(roomsFromZones);
-            } else {
-              // 如果 API 没有返回数据，且不是默认店铺，则置空，避免显示不匹配的默认数据
-              if (shop.id === defaultShop.id) {
-                setRooms(defaultRooms);
-              } else {
-                setRooms([]);
-              }
-            }
-          } catch {
-            console.log('Failed to fetch zones');
-            if (shop.id === defaultShop.id) {
-              setRooms(defaultRooms);
             } else {
               setRooms([]);
             }
+          } catch {
+            console.log('Failed to fetch zones');
+            setRooms([]);
           }
         }
       } catch (error) {
-        console.warn('Backend unavailable, switching to demo mode.');
-        setCurrentShop(defaultShop);
-        setRooms(defaultRooms);
+        console.error('Failed to fetch data:', error);
+        // Do not fallback to mock data
       } finally {
         setLoading(false);
       }
@@ -180,7 +112,7 @@ export const Home: React.FC = () => {
   );
 
   // 获取显示的店铺名称
-  const displayShopName = currentShop?.name || '起航自习室（五角场旗舰店）';
+  const displayShopName = currentShop?.name || '加载中...';
 
   return (
     <div className="flex flex-col min-h-screen pb-24 max-w-md mx-auto bg-background-light">

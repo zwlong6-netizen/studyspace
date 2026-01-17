@@ -63,7 +63,14 @@ export const SeatSelection: React.FC = () => {
       let label = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getDay()];
       if (i === 0) label = '今天';
       if (i === 1) label = '明天';
-      return { label, day, fullDate: date.toISOString().split('T')[0] };
+
+      // Fix: Use local date instead of UTC (toISOString)
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const dateNum = String(date.getDate()).padStart(2, '0');
+      const fullDate = `${year}-${month}-${dateNum}`;
+
+      return { label, day, fullDate };
     });
   }, []);
 
@@ -153,27 +160,16 @@ export const SeatSelection: React.FC = () => {
     return nextSched;
   };
 
-  // 使用 API 数据或默认座位
-  const seats: Seat[] = apiSeats.length > 0
-    ? apiSeats.map(s => ({
-      id: s.id,
-      label: s.label,
-      status: s.label === selectedSeat ? SeatStatus.Selected : SeatStatus.Available,
-      type: s.type as 'standard' | 'window' | 'vip'
-    }))
-    : [
-      { id: 'A1', label: 'A1', status: SeatStatus.Occupied, type: 'standard' },
-      { id: 'A2', label: 'A2', status: SeatStatus.Available, type: 'standard' },
-      { id: 'A3', label: 'A3', status: SeatStatus.Available, type: 'standard' },
-      { id: 'A4', label: 'A4', status: SeatStatus.Selected, type: 'standard' },
-      { id: 'B1', label: 'B1', status: SeatStatus.Available, type: 'standard' },
-      { id: 'B2', label: 'B2', status: SeatStatus.Occupied, type: 'standard' },
-      { id: 'B3', label: 'B3', status: SeatStatus.Available, type: 'standard' },
-      { id: 'B4', label: 'B4', status: SeatStatus.Available, type: 'standard' },
-    ];
+  // 使用 API 数据
+  const seats: Seat[] = apiSeats.map(s => ({
+    id: s.id,
+    label: s.label,
+    status: s.label === selectedSeat ? SeatStatus.Selected : SeatStatus.Available,
+    type: s.type as 'standard' | 'window' | 'vip'
+  }));
 
-  // 当前使用的时间表
-  const currentSchedules = Object.keys(schedules).length > 0 ? schedules : getMockSchedules();
+  // Current schedules
+  const currentSchedules = schedules;
 
   // Get occupied slots for the currently selected seat
   const occupiedSlots = useMemo(() => {
@@ -284,6 +280,11 @@ export const SeatSelection: React.FC = () => {
     );
   }
 
+  // Calculate rendering groups (split into left/right)
+  const midPoint = Math.ceil(seats.length / 2);
+  const leftGroup = seats.slice(0, midPoint);
+  const rightGroup = seats.slice(midPoint);
+
   return (
     <div className="relative flex flex-col h-screen max-w-md mx-auto bg-white overflow-hidden font-sans">
 
@@ -357,72 +358,67 @@ export const SeatSelection: React.FC = () => {
               </div>
             </div>
 
-            {/* Seats Grid */}
-            <div className="flex justify-between gap-8 mx-auto max-w-[300px]">
-              {/* Left Group */}
-              <div className="grid grid-cols-2 gap-3">
-                {seats.slice(0, 4).map(seat => {
-                  const conflicted = isConflicted(seat.label);
-                  const isSelected = seat.label === selectedSeat;
-
-                  return (
-                    <button
-                      key={seat.id}
-                      onClick={() => handleSeatSelect(seat)}
-                      className={`group relative w-14 h-14 rounded-xl flex items-center justify-center transition-all ${isSelected
-                        ? 'bg-[#1A1A1A] text-white shadow-lg ring-4 ring-[#1A1A1A]/10 z-10'
-                        : conflicted
-                          ? 'bg-red-50 border-2 border-red-100 text-red-400'
-                          : 'bg-white border-2 border-gray-200 text-gray-400 hover:border-gray-900 hover:text-gray-900'
-                        }`}
-                    >
-                      {isSelected ? <Check size={20} strokeWidth={3} /> :
-                        conflicted ? <User size={20} className="text-red-300" /> :
-                          <span className="text-sm font-bold">{seat.label}</span>
-                      }
-                    </button>
-                  );
-                })}
+            {seats.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                <p>该区域暂无座位信息</p>
               </div>
+            ) : (
+              /* Seats Grid (Dynamic) */
+              <div className="flex justify-between gap-8 mx-auto max-w-[300px]">
+                {/* Left Group */}
+                <div className="grid grid-cols-2 gap-3 content-start">
+                  {leftGroup.map(seat => {
+                    const conflicted = isConflicted(seat.label);
+                    const isSelected = seat.label === selectedSeat;
 
-              {/* Right Group */}
-              <div className="grid grid-cols-2 gap-3">
-                {seats.slice(4, 8).map(seat => {
-                  const conflicted = isConflicted(seat.label);
-                  const isSelected = seat.label === selectedSeat;
+                    return (
+                      <button
+                        key={seat.id}
+                        onClick={() => handleSeatSelect(seat)}
+                        className={`group relative w-14 h-14 rounded-xl flex items-center justify-center transition-all ${isSelected
+                          ? 'bg-[#1A1A1A] text-white shadow-lg ring-4 ring-[#1A1A1A]/10 z-10'
+                          : conflicted
+                            ? 'bg-red-50 border-2 border-red-100 text-red-400'
+                            : 'bg-white border-2 border-gray-200 text-gray-400 hover:border-gray-900 hover:text-gray-900'
+                          }`}
+                      >
+                        {isSelected ? <Check size={20} strokeWidth={3} /> :
+                          conflicted ? <User size={20} className="text-red-300" /> :
+                            <span className="text-sm font-bold">{seat.label}</span>
+                        }
+                      </button>
+                    );
+                  })}
+                </div>
 
-                  return (
-                    <button
-                      key={seat.id}
-                      onClick={() => handleSeatSelect(seat)}
-                      className={`group relative w-14 h-14 rounded-xl flex items-center justify-center transition-all ${isSelected
-                        ? 'bg-[#1A1A1A] text-white shadow-lg ring-4 ring-[#1A1A1A]/10 z-10'
-                        : conflicted
-                          ? 'bg-red-50 border-2 border-red-100 text-red-400'
-                          : 'bg-white border-2 border-gray-200 text-gray-400 hover:border-gray-900 hover:text-gray-900'
-                        }`}
-                    >
-                      {isSelected ? <Check size={20} strokeWidth={3} /> :
-                        conflicted ? <User size={20} className="text-red-300" /> :
-                          <span className="text-sm font-bold">{seat.label}</span>
-                      }
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                {/* Right Group */}
+                <div className="grid grid-cols-2 gap-3 content-start">
+                  {rightGroup.map(seat => {
+                    const conflicted = isConflicted(seat.label);
+                    const isSelected = seat.label === selectedSeat;
 
-            {/* Mock next row for context */}
-            <div className="flex justify-between gap-8 mx-auto max-w-[300px] mt-8 opacity-30 pointer-events-none">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="w-14 h-14 rounded-xl border-2 border-gray-200 flex items-center justify-center"><span className="text-sm font-bold text-gray-400">A5</span></div>
-                <div className="w-14 h-14 rounded-xl border-2 border-gray-200 flex items-center justify-center"><span className="text-sm font-bold text-gray-400">A6</span></div>
+                    return (
+                      <button
+                        key={seat.id}
+                        onClick={() => handleSeatSelect(seat)}
+                        className={`group relative w-14 h-14 rounded-xl flex items-center justify-center transition-all ${isSelected
+                          ? 'bg-[#1A1A1A] text-white shadow-lg ring-4 ring-[#1A1A1A]/10 z-10'
+                          : conflicted
+                            ? 'bg-red-50 border-2 border-red-100 text-red-400'
+                            : 'bg-white border-2 border-gray-200 text-gray-400 hover:border-gray-900 hover:text-gray-900'
+                          }`}
+                      >
+                        {isSelected ? <Check size={20} strokeWidth={3} /> :
+                          conflicted ? <User size={20} className="text-red-300" /> :
+                            <span className="text-sm font-bold">{seat.label}</span>
+                        }
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="w-14 h-14 rounded-xl border-2 border-gray-200 flex items-center justify-center"><span className="text-sm font-bold text-gray-400">B5</span></div>
-                <div className="w-14 h-14 rounded-xl border-2 border-gray-200 flex items-center justify-center"><span className="text-sm font-bold text-gray-400">B6</span></div>
-              </div>
-            </div>
+            )}
+
           </div>
         </div>
       </div>

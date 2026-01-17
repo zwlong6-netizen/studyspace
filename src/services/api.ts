@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 /**
  * StudySpace API 服务层
  * 封装所有后端 API 调用
@@ -184,6 +185,8 @@ export interface Shop {
     open_time: string;
     close_time: string;
     is_24h: boolean;
+    latitude?: number;
+    longitude?: number;
 }
 
 export const shopsApi = {

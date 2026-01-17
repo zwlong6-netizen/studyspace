@@ -191,12 +191,7 @@ export const OrderList: React.FC = () => {
                       </button>
                     )}
                   </div>
-                  {order.shops?.image && displayStatus === 'active' && (
-                    <div className="w-full h-40 shrink-0 rounded-lg overflow-hidden bg-gray-100 relative mt-2">
-                      <img src={order.shops.image} className="w-full h-full object-cover" alt="Order" />
-                      <div className="absolute inset-0 bg-black/5"></div>
-                    </div>
-                  )}
+
                   {displayStatus !== 'active' && (
                     <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
                       {displayStatus === 'completed' && (

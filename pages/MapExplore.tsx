@@ -1,13 +1,55 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Search, Locate, Layers, MapPin, Loader2 } from 'lucide-react';
+import { ChevronLeft, Search, Locate, Layers, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { shopsApi, Shop } from '../src/services/api';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { renderToString } from 'react-dom/server';
+
+// Map Updater Component to handle view changes
+const MapUpdater: React.FC<{ center: [number, number], zoom: number }> = ({ center, zoom }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.flyTo(center, zoom, {
+      duration: 1.5
+    });
+    // Invalidate size to ensure tiles render correctly
+    map.invalidateSize();
+  }, [center, zoom, map]);
+  return null;
+};
+
+// Create custom DivIcon for stores
+const createCustomIcon = (shop: Shop, isSelected: boolean) => {
+  const iconHtml = renderToString(
+    <div className={`flex flex-col items-center transition-all duration-300 ${isSelected ? 'scale-110 z-[1000]' : 'opacity-90 hover:opacity-100 hover:scale-105 z-[500]'}`}>
+      <div className={`${isSelected ? 'bg-brand-green text-white border-white/20' : 'bg-white text-gray-800 border-gray-100'} px-3 py-1 rounded-full shadow-lg text-[12px] font-bold mb-1 border whitespace-nowrap transition-colors`}>
+        {shop.name.match(/（(.+?)）/)?.[1] || shop.name}
+      </div>
+      <div className={`${isSelected ? 'text-brand-green fill-brand-green drop-shadow-md' : 'text-gray-400 fill-gray-400'} transition-colors`}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill={isSelected ? '#047857' : 'currentColor'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+          <circle cx="12" cy="10" r="3" fill={isSelected ? 'white' : 'none'} />
+        </svg>
+      </div>
+    </div>
+  );
+
+  return L.divIcon({
+    html: iconHtml,
+    className: 'custom-map-marker',
+    iconSize: [120, 60],
+    iconAnchor: [60, 60],
+  });
+};
+
 
 // 默认店铺数据（当 API 不可用时使用）
 const defaultMapStores: Shop[] = [
   {
     id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-    name: '起航自习室（五角场旗舰店）',
+    name: '起航自习室（五道口店）',
     distance: '0.8km',
     rating: 4.9,
     price: 12,
@@ -19,7 +61,9 @@ const defaultMapStores: Shop[] = [
     facilities: ['高速WiFi', '免费饮水', '独立储物柜'],
     open_time: '00:00',
     close_time: '23:59',
-    is_24h: true
+    is_24h: true,
+    latitude: 39.992894,
+    longitude: 116.337742
   },
   {
     id: 'b2c3d4e5-f6a7-8901-bcde-f23456789012',
@@ -35,7 +79,9 @@ const defaultMapStores: Shop[] = [
     facilities: ['高速WiFi', '会议室', '打印服务'],
     open_time: '08:00',
     close_time: '22:00',
-    is_24h: false
+    is_24h: false,
+    latitude: 39.982236,
+    longitude: 116.315228
   },
   {
     id: 'c3d4e5f6-a7b8-9012-cdef-345678901234',
@@ -51,27 +97,45 @@ const defaultMapStores: Shop[] = [
     facilities: ['高速WiFi', '咖啡吧', '休息室'],
     open_time: '08:00',
     close_time: '22:00',
-    is_24h: false
+    is_24h: false,
+    latitude: 39.934898,
+    longitude: 116.454477
   }
 ];
-
-// 为店铺定义地图位置
-const getMapPosition = (index: number): { top: string; left: string } => {
-  const positions = [
-    { top: '28%', left: '22%' },
-    { top: '42%', left: '45%' },
-    { top: '55%', left: '68%' },
-    { top: '35%', left: '60%' },
-    { top: '48%', left: '25%' }
-  ];
-  return positions[index % positions.length];
-};
 
 export const MapExplore: React.FC = () => {
   const navigate = useNavigate();
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedShopId, setSelectedShopId] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Default map view (Beijing center)
+  const defaultCenter: [number, number] = [39.96, 116.40];
+  const [mapCenter, setMapCenter] = useState<[number, number]>(defaultCenter);
+  const [mapZoom, setMapZoom] = useState(12);
+
+  // 搜索逻辑：回车触发搜索
+  const handleSearch = () => {
+    if (!searchQuery.trim()) return;
+
+    const lowerQuery = searchQuery.toLowerCase();
+    const matchedShop = shops.find(s => s.name.toLowerCase().includes(lowerQuery));
+
+    if (matchedShop) {
+      setSelectedShopId(matchedShop.id);
+      if (matchedShop.latitude && matchedShop.longitude) {
+        setMapCenter([matchedShop.latitude, matchedShop.longitude]);
+        setMapZoom(15);
+      }
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
 
   // 加载店铺数据
   useEffect(() => {
@@ -82,7 +146,11 @@ export const MapExplore: React.FC = () => {
           setShops(response.shops);
           // 默认选中第一个
           if (response.shops.length > 0) {
-            setSelectedShopId(response.shops[0].id);
+            const firstShop = response.shops[0];
+            setSelectedShopId(firstShop.id);
+            if (firstShop.latitude && firstShop.longitude) {
+              setMapCenter([firstShop.latitude, firstShop.longitude]);
+            }
           }
         } else {
           setShops(defaultMapStores);
@@ -102,18 +170,21 @@ export const MapExplore: React.FC = () => {
 
   const selectedShop = shops.find(s => s.id === selectedShopId);
 
-  // 获取店铺简称
-  const getShopBranchName = (shop: Shop): string => {
-    const match = shop.name.match(/（(.+?)）/);
-    return match ? match[1] : shop.name;
-  };
-
   // 选择店铺并返回首页
   const handleSelectShop = () => {
     if (selectedShop) {
       navigate('/', { state: { shop: selectedShop } });
     }
   };
+
+  const handleMarkerClick = (shop: Shop) => {
+    setSelectedShopId(shop.id);
+    if (shop.latitude && shop.longitude) {
+      setMapCenter([shop.latitude, shop.longitude]);
+      setMapZoom(15);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -125,61 +196,71 @@ export const MapExplore: React.FC = () => {
 
   return (
     <div className="relative flex h-screen w-full flex-col overflow-hidden max-w-md mx-auto bg-background-light">
-      {/* Simulated Map Background */}
-      <div className="absolute inset-0 z-0 bg-[#eef1ed] overflow-hidden" onClick={() => setSelectedShopId('')}>
-        {/* Abstract Map Patterns */}
-        <div className="absolute inset-0 opacity-40" style={{
-          backgroundImage: `linear-gradient(90deg, transparent 48%, #ffffff 49%, #ffffff 51%, transparent 52%),
-                linear-gradient(0deg, transparent 48%, #ffffff 49%, #ffffff 51%, transparent 52%)`,
-          backgroundSize: '200px 200px'
-        }}></div>
 
-        {/* Simulated Buildings */}
-        <div className="absolute top-[22%] left-[18%] w-24 h-16 bg-white border border-gray-200 rounded shadow-sm"></div>
-        <div className="absolute top-[10%] left-[45%] w-20 h-24 bg-white border border-gray-200 rounded shadow-sm"></div>
-        <div className="absolute top-[45%] left-[60%] w-20 h-20 bg-white border border-gray-200 rounded shadow-sm"></div>
+      {/* Real Map Background */}
+      <div className="absolute inset-0 z-0 h-full w-full">
+        <MapContainer
+          center={mapCenter}
+          zoom={mapZoom}
+          style={{ height: '100%', width: '100%' }}
+          zoomControl={false}
+        >
+          {/* High Resolution CartoDB Voyager Tiles */}
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            maxZoom={20}
+          />
+          <MapUpdater center={mapCenter} zoom={mapZoom} />
 
-        {/* District Labels */}
-        <div className="absolute top-[18%] left-[10%] text-[10px] font-bold text-gray-400 uppercase tracking-widest">Yangpu District</div>
-        <div className="absolute top-[55%] left-[65%] text-[10px] font-bold text-gray-400 uppercase tracking-widest">Pudong District</div>
-
-        {/* Markers */}
-        {shops.map((shop, index) => {
-          const position = getMapPosition(index);
-          const isSelected = shop.id === selectedShopId;
-          return (
-            <div
-              key={shop.id}
-              className={`absolute flex flex-col items-center cursor-pointer transition-all duration-300 z-20 ${isSelected ? 'scale-110 z-30' : 'opacity-90 hover:opacity-100 hover:scale-105'}`}
-              style={{ top: position.top, left: position.left }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedShopId(shop.id);
-              }}
-            >
-              <div className={`${isSelected ? 'bg-brand-green text-white border-white/20' : 'bg-white text-gray-800 border-gray-100'} px-3 py-1 rounded-full shadow-lg text-[12px] font-bold mb-1 border whitespace-nowrap transition-colors`}>
-                {getShopBranchName(shop)}
-              </div>
-              <MapPin className={`${isSelected ? 'text-brand-green fill-brand-green drop-shadow-md' : 'text-gray-400 fill-gray-400'} w-8 h-8 transition-colors`} />
-            </div>
-          );
-        })}
+          {shops.map(shop => {
+            if (shop.latitude && shop.longitude) {
+              const isSelected = selectedShopId === shop.id;
+              return (
+                <Marker
+                  key={shop.id}
+                  position={[shop.latitude, shop.longitude]}
+                  icon={createCustomIcon(shop, isSelected)}
+                  eventHandlers={{
+                    click: () => handleMarkerClick(shop)
+                  }}
+                />
+              )
+            }
+            return null;
+          })}
+        </MapContainer>
       </div>
 
       {/* Top Bar */}
-      <div className="absolute top-0 left-0 right-0 p-4 z-10 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="w-11 h-11 bg-white rounded-full shadow-xl flex items-center justify-center text-gray-800 active:scale-95 transition-transform">
+      <div className="absolute top-0 left-0 right-0 p-4 z-10 flex items-center gap-3 pointer-events-none">
+        <button onClick={() => navigate(-1)} className="w-11 h-11 bg-white rounded-full shadow-xl flex items-center justify-center text-gray-800 active:scale-95 transition-transform pointer-events-auto">
           <ChevronLeft size={24} />
         </button>
-        <div className="relative flex items-center flex-1">
+        <div className="relative flex items-center flex-1 pointer-events-auto">
           <Search className="absolute left-4 text-gray-400 w-5 h-5" />
-          <input type="text" placeholder="搜索店铺..." className="w-full h-11 pl-11 pr-4 bg-white border-none rounded-full text-[15px] font-medium focus:ring-1 focus:ring-brand-green shadow-xl placeholder-gray-400 text-gray-800" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="搜索店铺"
+            className="w-full h-11 pl-11 pr-4 bg-white border-none rounded-full text-[15px] font-medium focus:ring-1 focus:ring-brand-green shadow-xl placeholder-gray-400 text-gray-800"
+          />
         </div>
       </div>
 
       {/* Map Controls */}
-      <div className="absolute right-4 bottom-28 flex flex-col gap-3 z-10">
-        <button className="w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center text-gray-600 active:scale-95 transition-transform">
+      <div className="absolute right-4 bottom-28 flex flex-col gap-3 z-10 pointer-events-auto">
+        <button
+          className="w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center text-gray-600 active:scale-95 transition-transform"
+          onClick={() => {
+            // Reset view to default
+            setMapCenter(defaultCenter);
+            setMapZoom(12);
+            setSelectedShopId('');
+          }}
+        >
           <Locate size={24} />
         </button>
         <button className="w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center text-gray-600 active:scale-95 transition-transform">
@@ -189,7 +270,7 @@ export const MapExplore: React.FC = () => {
 
       {/* Bottom Store Card */}
       {selectedShop && (
-        <div className="absolute bottom-4 left-4 right-4 z-10 animate-in slide-in-from-bottom-4 duration-300 fade-in">
+        <div className="absolute bottom-4 left-4 right-4 z-10 animate-in slide-in-from-bottom-4 duration-300 fade-in pointer-events-auto">
           <div className="bg-white rounded-[24px] p-5 shadow-2xl border border-gray-100">
             <div className="flex gap-4">
               <div className="w-20 h-20 rounded-xl bg-gray-100 overflow-hidden shrink-0">

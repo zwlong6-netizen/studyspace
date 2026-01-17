@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS shops (
     open_time TIME DEFAULT '08:00',
     close_time TIME DEFAULT '22:00',
     is_24h BOOLEAN DEFAULT FALSE,
+    latitude DECIMAL(10, 6),
+    longitude DECIMAL(10, 6),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -143,7 +145,7 @@ CREATE INDEX IF NOT EXISTS idx_zones_shop ON zones(shop_id);
 -- =====================================================
 
 -- 插入示例店铺
-INSERT INTO shops (id, name, location, address, distance, rating, review_count, price, image, tags, facilities, description, open_time, close_time, is_24h) VALUES
+INSERT INTO shops (id, name, location, address, distance, rating, review_count, price, image, tags, facilities, description, open_time, close_time, is_24h, latitude, longitude) VALUES
 (
     'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
     '起航自习室（五道口店）',
@@ -159,7 +161,9 @@ INSERT INTO shops (id, name, location, address, distance, rating, review_count, 
     '起航自习室五道口旗舰店',
     '00:00',
     '23:59',
-    TRUE
+    TRUE,
+    39.992894,
+    116.337742
 ),
 (
     'b2c3d4e5-f6a7-8901-bcde-f23456789012',
@@ -176,12 +180,14 @@ INSERT INTO shops (id, name, location, address, distance, rating, review_count, 
     '中关村核心地段',
     '08:00',
     '22:00',
-    FALSE
+    FALSE,
+    39.982236, 
+    116.315228
 ),
 (
     'c3d4e5f6-a7b8-9012-cdef-345678901234',
     '起航自习室（三里屯店）',
-    '朝阳区',
+    '海淀区', -- 注意：原数据这里写的是朝阳区，但location字段是text。这里保持一致或修正。为了演示坐标，我将其放在三里屯真实位置
     '朝阳区三里屯SOHO B座',
     '2.5km',
     4.8,
@@ -193,7 +199,9 @@ INSERT INTO shops (id, name, location, address, distance, rating, review_count, 
     '三里屯时尚地标',
     '08:00',
     '23:00',
-    FALSE
+    FALSE,
+    39.934898,
+    116.454477
 );
 
 -- 五道口店的房间：学术风格

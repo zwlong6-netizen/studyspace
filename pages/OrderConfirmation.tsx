@@ -8,6 +8,7 @@ export const OrderConfirmation: React.FC = () => {
   const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'wechat' | 'alipay' | 'balance'>('wechat');
 
   const state = location.state as {
     storeName?: string;
@@ -84,7 +85,7 @@ export const OrderConfirmation: React.FC = () => {
         duration,
         original_price: originalPrice,
         discount,
-        payment_method: 'wechat'
+        payment_method: paymentMethod
       });
 
       if (response.success) {
@@ -188,27 +189,39 @@ export const OrderConfirmation: React.FC = () => {
             <h3 className="text-sm font-bold text-gray-900">支付方式</h3>
           </div>
           <div className="flex flex-col">
-            <label className="relative flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors group">
+            <label className="relative flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors group" onClick={() => setPaymentMethod('wechat')}>
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#09bb07]/10 text-[#09bb07]">
                   <MessageSquare size={18} className="fill-current" />
                 </div>
                 <span className="text-sm font-medium text-gray-900">微信支付</span>
               </div>
-              <input type="radio" name="payment" className="peer sr-only" defaultChecked />
+              <input
+                type="radio"
+                name="payment"
+                className="peer sr-only"
+                checked={paymentMethod === 'wechat'}
+                onChange={() => setPaymentMethod('wechat')}
+              />
               <div className="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:border-brand-green peer-checked:bg-brand-green flex items-center justify-center transition-all">
                 <div className="w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100"></div>
               </div>
             </label>
             <div className="h-px bg-gray-100 mx-4"></div>
-            <label className="relative flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors group">
+            <label className="relative flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors group" onClick={() => setPaymentMethod('alipay')}>
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#1677ff]/10 text-[#1677ff]">
                   <QrCode size={18} />
                 </div>
                 <span className="text-sm font-medium text-gray-900">支付宝</span>
               </div>
-              <input type="radio" name="payment" className="peer sr-only" />
+              <input
+                type="radio"
+                name="payment"
+                className="peer sr-only"
+                checked={paymentMethod === 'alipay'}
+                onChange={() => setPaymentMethod('alipay')}
+              />
               <div className="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:border-brand-green peer-checked:bg-brand-green flex items-center justify-center transition-all">
                 <div className="w-2 h-2 bg-white rounded-full opacity-0 peer-checked:opacity-100"></div>
               </div>
