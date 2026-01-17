@@ -3,7 +3,7 @@
  * 封装所有后端 API 调用
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // =====================================================
 // 通用请求方法
