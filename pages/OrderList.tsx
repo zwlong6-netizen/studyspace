@@ -177,6 +177,11 @@ export const OrderList: React.FC = () => {
                           <Clock size={16} /> {order.start_time} - {order.end_time} ({order.date})
                         </p>
                         <p className="text-primary text-sm font-semibold mt-1">¥{order.final_price?.toFixed(2)}</p>
+                        {order.created_at && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            下单时间: {new Date(order.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })}
+                          </p>
+                        )}
                       </div>
                     </div>
                     {displayStatus === 'active' && (
