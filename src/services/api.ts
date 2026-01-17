@@ -377,6 +377,58 @@ export const ordersApi = {
     }
 };
 
+export interface Announcement {
+    id: string;
+    content: string;
+    title: string;
+    image_url?: string;
+    tag?: string;
+    tag_color?: string;
+    type: 'info' | 'warning' | 'promotion';
+    active: boolean;
+    created_at: string;
+}
+
+export const adminApi = {
+    getAllOrders: async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE_URL}/orders?all=true`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                return await response.json();
+            }
+            return { success: false, error: 'Invalid response' };
+        } catch (err) {
+            return { success: false, error: err };
+        }
+    }
+};
+
+
+export const announcementsApi = {
+    getActive: async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/announcements`);
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                return await response.json();
+            } else {
+                const text = await response.text();
+                console.error("Received non-JSON response from /announcements:", text);
+                throw new Error("Invalid response format");
+            }
+        } catch (error) {
+            console.error('Error fetching announcements:', error);
+            return { success: false, error };
+        }
+    }
+};
+
 // =====================================================
 // 健康检查
 // =====================================================
@@ -397,5 +449,6 @@ export default {
     shops: shopsApi,
     seats: seatsApi,
     orders: ordersApi,
+    announcements: announcementsApi,
     checkHealth: checkApiHealth,
 };

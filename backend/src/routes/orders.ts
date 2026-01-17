@@ -134,17 +134,24 @@ router.post('/', authMiddleware, async (req: Request, res: Response): Promise<vo
 router.get('/', authMiddleware, async (req: Request, res: Response): Promise<void> => {
     try {
         const userId = req.user?.userId;
-        const { status } = req.query;
+        const { status, all } = req.query;
 
         let query = supabase
             .from('orders')
             .select(`
         *,
         shops:shop_id (id, name, image, location),
-        seats:seat_id (id, label, type, zone_name)
+        seats:seat_id (id, label, type, zone_name),
+        users:user_id (username, phone)
       `)
-            .eq('user_id', userId)
             .order('created_at', { ascending: false });
+
+        // If not requesting all (admin), filter by current user
+        if (all !== 'true') {
+            query = query.eq('user_id', userId);
+        } else {
+            // For admin view, maybe we want to fetch user details too (added above in select)
+        }
 
         if (status && typeof status === 'string') {
             query = query.eq('status', status);

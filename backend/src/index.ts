@@ -6,20 +6,25 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Import routes
-import authRoutes from './routes/auth.js';
-import shopsRoutes from './routes/shops.js';
-import seatsRoutes from './routes/seats.js';
-import ordersRoutes from './routes/orders.js';
+import authRouter from './routes/auth.js';
+import shopsRouter from './routes/shops.js';
+import seatsRouter from './routes/seats.js';
+import ordersRouter from './routes/orders.js';
+import announcementsRouter from './routes/announcements.js';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const port = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
-    credentials: true
-}));
+app.use(cors());
 app.use(express.json());
+
+// Routes
+app.use('/api/shops', shopsRouter);
+app.use('/api/seats', seatsRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/orders', ordersRouter);
+app.use('/api/announcements', announcementsRouter);
 
 // Request logging (development)
 app.use((req, res, next) => {
@@ -27,20 +32,10 @@ app.use((req, res, next) => {
     next();
 });
 
-// Health check endpoint
+// Health check
 app.get('/api/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        message: 'StudySpace API is running'
-    });
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/shops', shopsRoutes);
-app.use('/api/seats', seatsRoutes);
-app.use('/api/orders', ordersRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -61,13 +56,13 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 
 // Start server
 if (!process.env.VERCEL) {
-    app.listen(PORT, () => {
+    app.listen(port, () => {
         console.log('');
         console.log('╔══════════════════════════════════════════════╗');
         console.log('║                                              ║');
         console.log('║       🚀 StudySpace API Server               ║');
         console.log('║                                              ║');
-        console.log(`║       Running on http://localhost:${PORT}       ║`);
+        console.log(`║       Running on http://localhost:${port}       ║`);
         console.log('║                                              ║');
         console.log('╚══════════════════════════════════════════════╝');
         console.log('');
@@ -83,7 +78,7 @@ if (!process.env.VERCEL) {
         console.log('  GET  /api/seats/:id/schedule - Seat schedule');
         console.log('  POST /api/orders          - Create order');
         console.log('  GET  /api/orders          - List orders');
-        console.log('  PATCH /api/orders/:id     - Update order');
+        console.log('  GET  /api/announcements   - List active announcements');
         console.log('');
     });
 }

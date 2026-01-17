@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MapPin, ChevronDown, Search, BookOpen, Users, LayoutGrid, Moon, User, Loader2, Armchair } from 'lucide-react';
+import { MapPin, ChevronDown, Search, BookOpen, Users, LayoutGrid, Moon, User, Loader2, Armchair, Bell, Megaphone, Info, AlertTriangle } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
-import { shopsApi, authApi, Shop, Zone } from '../src/services/api';
+import { shopsApi, authApi, announcementsApi, Shop, Zone, Announcement } from '../src/services/api';
 
 // 房间/区域数据接口（用于前端展示）
 interface Room {
@@ -39,6 +39,28 @@ export const Home: React.FC = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  // Fetch announcements
+  useEffect(() => {
+    announcementsApi.getActive().then(res => {
+      if (res.success && res.announcements) {
+        // Sort by specific tag priority
+        const priority: Record<string, number> = {
+          '新店开业': 1,
+          '紧急通知': 2,
+          '限时活动': 3,
+          '会员福利': 4
+        };
+        const sorted = [...res.announcements].sort((a, b) => {
+          const pA = priority[a.tag || ''] || 99;
+          const pB = priority[b.tag || ''] || 99;
+          return pA - pB;
+        });
+        setAnnouncements(sorted);
+      }
+    });
+  }, []);
 
   // 当从 state 传入店铺时更新 currentShop (处理组件复用而非重新挂载的情况)
   useEffect(() => {
@@ -62,7 +84,6 @@ export const Home: React.FC = () => {
             shop = shopsResponse.shops[0];
             setCurrentShop(shop);
           } else {
-            // No shops found
             setCurrentShop(null);
           }
         }
@@ -72,8 +93,7 @@ export const Home: React.FC = () => {
           try {
             const zonesResponse = await shopsApi.getShopZones(shop.id);
             if (zonesResponse.success && zonesResponse.zones.length > 0) {
-              // 将 Zone 转换为 Room
-              const roomsFromZones = zonesResponse.zones.map((zone, index) => zoneToRoom(zone));
+              const roomsFromZones = zonesResponse.zones.map((zone) => zoneToRoom(zone));
               setRooms(roomsFromZones);
             } else {
               setRooms([]);
@@ -85,7 +105,6 @@ export const Home: React.FC = () => {
         }
       } catch (error) {
         console.error('Failed to fetch data:', error);
-        // Do not fallback to mock data
       } finally {
         setLoading(false);
       }
@@ -121,26 +140,29 @@ export const Home: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-1.5 cursor-pointer" onClick={() => navigate('/map')}>
             <MapPin className="text-primary w-5 h-5" />
-            <span className="text-sm font-semibold text-primary">{displayShopName}</span>
-            <ChevronDown className="text-gray-400 w-4 h-4" />
+            <span className="font-medium text-lg text-text-primary">{displayShopName}</span>
+            <ChevronDown className="text-text-secondary w-4 h-4" />
           </div>
-          <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border border-gray-200" onClick={() => navigate('/profile')}>
-            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvWFUYSuDwYHMEnVxZj4tqaXY65uX2qjT75L7-XYeGzTefCccZECJvc72B3iO-2RlqjGyrPtCPq1J3sGlKgwropKZ5RhV8KyMkuoYQLBhZoND4Lc--KAS7pYruR-3Q-1Q7Cjd1PGQxm8YExBkURCtsQvUlwpcHtlYbkXjaOKW4jKuGbP8VT48lK6Xgpm3kBQWr77cTv7bNLGWvDrZoA1LxGanX2T3XR_DDBuKec8VJldj13kPl0cDez4ozSTqZaUn2T7DuQBf2O5k" alt="Avatar" className="w-full h-full object-cover" />
+          <div className="flex items-center gap-3">
+            <div onClick={() => navigate('/orders')} className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 relative">
+              <BookOpen className="w-5 h-5 text-gray-600" />
+            </div>
+            <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 relative">
+              <Bell className="w-5 h-5 text-gray-600" />
+              <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+            </div>
           </div>
         </div>
-        <h1 className="text-[28px] font-bold text-primary leading-tight mb-4">
-          早安，<br />准备好开始了吗？
-        </h1>
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
-          </div>
+
+        {/* Search Bar */}
+        <div className="relative mb-2">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary w-5 h-5" />
           <input
             type="text"
+            placeholder="搜索房间或设施..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="block w-full pl-10 pr-3 py-3 border-none rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/20 shadow-sm"
-            placeholder="搜索空间、地点"
           />
         </div>
       </div>
@@ -148,22 +170,81 @@ export const Home: React.FC = () => {
       {/* Banners */}
       <div className="px-4 mt-2">
         <div className="flex overflow-x-auto gap-4 no-scrollbar snap-x snap-mandatory pb-4">
-          <div className="snap-center shrink-0 w-[85%] aspect-[2/1] rounded-2xl overflow-hidden relative shadow-lg group cursor-pointer">
-            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSQh8P7sZQKwx9ai8eqY6Z9H1RTskQfW9-_25S1UMJJ3sluFys_YqEYrQ98pbEmRjXnb16YS9qPcXiPmUA7qTHMtTlYyqqiZ2IaDoSti1xxKsIjGd5vr9vBCjMf_G701whOGQt24NjCmrk8_XgBj_XsW6JrwYEEvm_jHe3tR4TRH8nA4sijBguNFBnaldSi1C-KMoinQlRrmWVZ13dRApx8JEptXJ936KtNaLh_wFEle8nlrHYsp_gjUHdVxTY3q0sdmU40HydeHU" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt="Banner 1" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 flex flex-col justify-end">
-              <span className="inline-block px-2 py-1 bg-brand-green text-white text-xs font-bold rounded mb-2 w-fit">新店开业</span>
-              <h3 className="text-white text-xl font-bold">全场8折起优惠</h3>
-              <p className="text-white/90 text-sm">仅限本周，快来体验！</p>
-            </div>
-          </div>
-          <div className="snap-center shrink-0 w-[85%] aspect-[2/1] rounded-2xl overflow-hidden relative shadow-lg group cursor-pointer">
-            <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcm3_lhKE0Ga-0vZjOh0ygddxMnAhoFOhCdBKB5U0VfiTTYkcZN_35LZnoBpp2T8UhonqUkiAvat1CwS62_c_DJ2dGQTEGTKFOytoRvPbwIZ59TQYsVjOa4lWFgFWbMB5pPKV8XGH8Sck4-4bG1q_sWz19ycGn9U1d4m25ueiZdOh1yTrLBYmC_-O2HzbHQ7sEGWZyAYJ9vvqAkqvNYzEYp3M9UK-hn22519WOG6u58pFL3f7dVEZF1r08M8LYzJ7_nVtH8O5NS7U" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt="Banner 2" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 flex flex-col justify-end">
-              <span className="inline-block px-2 py-1 bg-white text-primary text-xs font-bold rounded mb-2 w-fit">限时活动</span>
-              <h3 className="text-white text-xl font-bold">周末读书会报名</h3>
-              <p className="text-white/90 text-sm">寻找志同道合的书友</p>
-            </div>
-          </div>
+          {announcements.length > 0 ? (
+            announcements.map((a) => (
+              <div key={a.id} className="snap-center shrink-0 w-[85%] aspect-[2/1] rounded-2xl overflow-hidden relative shadow-lg group cursor-pointer">
+                {a.image_url && (
+                  <img
+                    src={a.image_url}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    alt={a.title}
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 flex flex-col justify-end">
+                  {a.tag && (() => {
+                    // Helper to resolve color and contrast
+                    const getColorStyles = (colorStr?: string) => {
+                      const safeColor = colorStr?.toLowerCase() || '#3E6950';
+
+                      // Map legacy class names/names to hex
+                      const colorMap: Record<string, string> = {
+                        'brand-green': '#3E6950',
+                        'green': '#3E6950',
+                        'white': '#ffffff',
+                        'red': '#ef4444',
+                        'orange': '#f97316',
+                        'blue': '#3b82f6',
+                        'info': '#ffffff',
+                      };
+
+                      const bgColor = colorMap[safeColor] || safeColor;
+
+                      // Simple contrast check
+                      const isLight = bgColor === '#ffffff' || bgColor === '#fff' || bgColor === 'white' || bgColor === '#f0f0f0';
+
+                      return {
+                        backgroundColor: bgColor,
+                        color: isLight ? '#2e2e2e' : '#ffffff'
+                      };
+                    };
+
+                    const styles = getColorStyles(a.tag_color);
+
+                    return (
+                      <span
+                        className="inline-flex items-center justify-center px-2 h-6 text-xs font-bold rounded mb-2 w-fit"
+                        style={styles}
+                      >
+                        {a.tag}
+                      </span>
+                    );
+                  })()}
+                  <h3 className="text-white text-xl font-bold">{a.title}</h3>
+                  <p className="text-white/90 text-sm">{a.content}</p>
+                </div>
+              </div>
+            ))
+          ) : (
+            // Fallback content if no announcements
+            <>
+              <div className="snap-center shrink-0 w-[85%] aspect-[2/1] rounded-2xl overflow-hidden relative shadow-lg group cursor-pointer">
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBSQh8P7sZQKwx9ai8eqY6Z9H1RTskQfW9-_25S1UMJJ3sluFys_YqEYrQ98pbEmRjXnb16YS9qPcXiPmUA7qTHMtTlYyqqiZ2IaDoSti1xxKsIjGd5vr9vBCjMf_G701whOGQt24NjCmrk8_XgBj_XsW6JrwYEEvm_jHe3tR4TRH8nA4sijBguNFBnaldSi1C-KMoinQlRrmWVZ13dRApx8JEptXJ936KtNaLh_wFEle8nlrHYsp_gjUHdVxTY3q0sdmU40HydeHU" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt="Banner 1" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 flex flex-col justify-end">
+                  <span className="inline-flex items-center justify-center px-2 h-6 bg-brand-green text-white text-xs font-bold rounded mb-2 w-fit">加载中...</span>
+                  <h3 className="text-white text-xl font-bold">加载中...</h3>
+                  <p className="text-white/90 text-sm">加载中...</p>
+                </div>
+              </div>
+              <div className="snap-center shrink-0 w-[85%] aspect-[2/1] rounded-2xl overflow-hidden relative shadow-lg group cursor-pointer">
+                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcm3_lhKE0Ga-0vZjOh0ygddxMnAhoFOhCdBKB5U0VfiTTYkcZN_35LZnoBpp2T8UhonqUkiAvat1CwS62_c_DJ2dGQTEGTKFOytoRvPbwIZ59TQYsVjOa4lWFgFWbMB5pPKV8XGH8Sck4-4bG1q_sWz19ycGn9U1d4m25ueiZdOh1yTrLBYmC_-O2HzbHQ7sEGWZyAYJ9vvqAkqvNYzEYp3M9UK-hn22519WOG6u58pFL3f7dVEZF1r08M8LYzJ7_nVtH8O5NS7U" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt="Banner 2" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 flex flex-col justify-end">
+                  <span className="inline-flex items-center justify-center px-2 h-6 bg-white text-primary text-xs font-bold rounded mb-2 w-fit">加载中...</span>
+                  <h3 className="text-white text-xl font-bold">加载中...</h3>
+                  <p className="text-white/90 text-sm">加载中...</p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

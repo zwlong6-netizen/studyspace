@@ -1,5 +1,9 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { AdminLayout } from './src/layouts/AdminLayout';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { AdminShops } from './pages/admin/AdminShops';
+import { AdminOrders } from './pages/admin/AdminOrders';
 import { Home } from './pages/Home';
 import { MapExplore } from './pages/MapExplore';
 import { StoreDetail } from './pages/StoreDetail';
@@ -27,6 +31,13 @@ const App: React.FC = () => {
         <Route path="/stats" element={<StatsReport />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+
+        {/* Admin Routes - Desktop Only */}
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="shops" element={<AdminShops />} />
+          <Route path="orders" element={<AdminOrders />} />
+        </Route>
       </Routes>
     </Router>
   );
