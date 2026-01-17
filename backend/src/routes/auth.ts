@@ -91,11 +91,12 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        // 查找用户
+        // 查找用户 (支持用户名或手机号)
         const { data: user, error } = await supabase
             .from('users')
             .select('*')
-            .eq('username', username)
+            // 支持通过用户名或手机号登录
+            .or(`username.eq.${username},phone.eq.${username}`)
             .single();
 
         if (error || !user) {
