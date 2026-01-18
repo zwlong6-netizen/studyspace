@@ -413,7 +413,7 @@ export interface Order {
     original_price: number;
     discount: number;
     final_price: number;
-    status: 'active' | 'completed' | 'cancelled';
+    status: 'active' | 'completed' | 'cancelled' | 'pending';
     payment_method: string;
     qr_code?: string;
     created_at: string;
@@ -492,10 +492,10 @@ export const adminApi = {
         return request(`/stats/trend${query}`, { useAdminToken: true });
     },
 
-    getAllOrders: async (shopId?: string) => {
+    getAllOrders: async (shopId?: string): Promise<{ success: boolean; orders?: Order[]; error?: any }> => {
         try {
             const query = shopId ? `?all=true&shop_id=${shopId}` : '?all=true';
-            return await request(`/orders${query}`, { useAdminToken: true });
+            return await request<{ success: boolean; orders: Order[] }>(`/orders${query}`, { useAdminToken: true });
         } catch (err) {
             return { success: false, error: err };
         }

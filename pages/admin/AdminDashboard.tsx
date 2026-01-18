@@ -259,7 +259,9 @@ export const AdminDashboard: React.FC = () => {
                                     </div>
                                     <div className="overflow-hidden">
                                         <p className="font-medium text-gray-900 text-sm truncate">{order.users?.username || '未知用户'}</p>
-                                        <p className="text-xs text-gray-500 truncate">{new Date(order.created_at).toLocaleTimeString()} - {order.shops?.name}</p>
+                                        <p className="text-xs text-gray-500 truncate">
+                                            {new Date(order.created_at).toLocaleTimeString()} - {order.seats?.zone_name || '未知区域'} · {order.seats?.label}座 · {order.start_time?.slice(0, 5)}~{order.end_time?.slice(0, 5)}
+                                        </p>
                                     </div>
                                 </div>
                                 <span className="font-bold text-gray-900 text-sm whitespace-nowrap">+ ¥{order.final_price || order.original_price}</span>

@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS orders (
     original_price DECIMAL(10, 2) NOT NULL,
     discount DECIMAL(10, 2) DEFAULT 0,
     final_price DECIMAL(10, 2) NOT NULL,
-    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
+    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled', 'pending')),
     payment_method TEXT DEFAULT 'wechat' CHECK (payment_method IN ('wechat', 'alipay', 'balance')),
     qr_code TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

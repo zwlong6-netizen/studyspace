@@ -4,6 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { shopsApi, Shop } from '../src/services/api';
 import AMapLoader from '../src/utils/AMapLoader';
 
+// Declare AMap on window
+declare global {
+  interface Window {
+    AMap: any;
+    _AMapSecurityConfig: any;
+  }
+}
+
 export const MapExplore: React.FC = () => {
   const navigate = useNavigate();
   const [shops, setShops] = useState<Shop[]>([]);

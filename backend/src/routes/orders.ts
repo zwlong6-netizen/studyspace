@@ -56,6 +56,16 @@ router.post('/', authMiddleware, async (req: Request, res: Response): Promise<vo
         // 生成二维码（模拟）
         const qrCode = `QR-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
+        // Check if order should be pending (>10 mins before start)
+        const now = new Date();
+        const orderStartTime = new Date(date);
+        orderStartTime.setHours(startHour, Math.floor((startHour % 1) * 60), 0, 0);
+
+        // 允许提前10分钟入场
+        const admissionTime = new Date(orderStartTime.getTime() - 10 * 60000);
+
+        const initialStatus = now < admissionTime ? 'pending' : 'active';
+
         // 创建订单
         const { data: order, error: orderError } = await supabase
             .from('orders')
@@ -70,7 +80,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response): Promise<vo
                 original_price,
                 discount,
                 final_price: finalPrice,
-                status: 'active',
+                status: initialStatus,
                 payment_method,
                 qr_code: qrCode
             })

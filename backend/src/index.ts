@@ -58,6 +58,10 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
     });
 });
 
+// Start scheduler
+import { startOrderScheduler } from './services/scheduler.js';
+startOrderScheduler();
+
 // Start server
 if (!process.env.VERCEL) {
     app.listen(port, () => {

@@ -3,22 +3,49 @@ import { useOutletContext } from 'react-router-dom';
 import { Search, Filter, Eye, CheckCircle, Clock, XCircle, Calendar, CreditCard, Loader2, X, Ban } from 'lucide-react';
 import { adminApi, ordersApi } from '../../src/services/api';
 
+// Helper to determine status
+const getOrderStatus = (order: any) => {
+    if (order.status !== 'active') return order.status;
+
+    // Check if time has passed
+    try {
+        const now = new Date();
+        const orderDate = new Date(order.date);
+
+        // Parse end time (HH:mm:ss)
+        const [endHour, endMinute] = (order.end_time || '00:00').split(':').map(Number);
+        const orderEndTime = new Date(orderDate);
+        orderEndTime.setHours(endHour, endMinute, 0, 0);
+
+        if (now > orderEndTime) {
+            return 'completed';
+        }
+    } catch (e) {
+        console.error("Date parse error", e);
+    }
+
+    return order.status;
+};
+
 const OrderStatusBadge: React.FC<{ status: string }> = ({ status }) => {
     const styles = {
         completed: 'bg-green-50 text-green-700 border-green-100',
         active: 'bg-blue-50 text-blue-700 border-blue-100',
+        pending: 'bg-yellow-50 text-yellow-700 border-yellow-100',
         cancelled: 'bg-gray-50 text-gray-600 border-gray-200',
     };
 
     const icons = {
         completed: <CheckCircle size={13} />,
         active: <Clock size={13} />,
+        pending: <Clock size={13} />,
         cancelled: <XCircle size={13} />,
     };
 
     const labels = {
         completed: '已完成',
         active: '进行中',
+        pending: '未开始',
         cancelled: '已取消',
     };
 
@@ -29,6 +56,7 @@ const OrderStatusBadge: React.FC<{ status: string }> = ({ status }) => {
         </span>
     );
 };
+
 
 export const AdminOrders: React.FC = () => {
     const { currentShopId } = useOutletContext<{ currentShopId: string }>();
@@ -84,8 +112,11 @@ export const AdminOrders: React.FC = () => {
         }
     };
 
-    const filteredOrders = orders.filter(order =>
-        (statusFilter === 'all' || order.status === statusFilter) &&
+    const filteredOrders = orders.map(order => ({
+        ...order,
+        displayStatus: getOrderStatus(order)
+    })).filter(order =>
+        (statusFilter === 'all' || order.displayStatus === statusFilter) &&
         (order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (order.users?.username || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (order.users?.phone || '').includes(searchTerm))
@@ -93,60 +124,16 @@ export const AdminOrders: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">订单管理</h1>
-                    <p className="text-gray-500 mt-1">查看和管理系统内的所有历史订单记录。</p>
-                </div>
-                <button
-                    onClick={() => currentShopId && loadOrders(currentShopId)}
-                    className="bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 hover:bg-gray-50 transition-colors shadow-sm">
-                    <Filter size={18} />
-                    刷新列表
-                </button>
-            </div>
+            {/* ... header ... */}
 
-            {/* Toolbar */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col sm:flex-row items-center gap-4">
-                {/* Status Tabs */}
-                <div className="flex bg-gray-100/80 p-1 rounded-xl w-full sm:w-auto">
-                    {[
-                        { id: 'all', label: '全部订单' },
-                        { id: 'active', label: '进行中' },
-                        { id: 'completed', label: '已完成' },
-                        { id: 'cancelled', label: '已取消' }
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setStatusFilter(tab.id)}
-                            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${statusFilter === tab.id
-                                ? 'bg-white text-gray-900 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
-                                }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-
-                <div className="h-6 w-px bg-gray-200 mx-2 hidden sm:block"></div>
-
-                <div className="relative flex-1 w-full max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                        type="text"
-                        placeholder="搜索订单号、用户名、手机号..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#3E6950]/20 focus:border-[#3E6950] outline-none transition-all"
-                    />
-                </div>
-            </div>
+            {/* ... toolbar ... */}
+            {/* Using ... existing code ... */}
 
             {/* Table */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
+                        {/* ... thead ... */}
                         <thead>
                             <tr className="bg-gray-50/50 border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wider">
                                 <th className="px-6 py-4 font-semibold">订单号</th>
@@ -207,7 +194,7 @@ export const AdminOrders: React.FC = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <OrderStatusBadge status={order.status} />
+                                            <OrderStatusBadge status={order.displayStatus} />
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
                                             <div className="flex items-center gap-1.5">
@@ -224,7 +211,7 @@ export const AdminOrders: React.FC = () => {
                                                 >
                                                     <Eye size={18} />
                                                 </button>
-                                                {order.status === 'active' && (
+                                                {order.displayStatus === 'active' && (
                                                     <button
                                                         onClick={() => handleCancelOrder(order.id)}
                                                         className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
