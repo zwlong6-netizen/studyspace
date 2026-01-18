@@ -31,75 +31,81 @@ export const Focus: React.FC = () => {
         return () => clearInterval(interval);
     }, [isSwRunning]);
 
-    // Audio Ref
-    const audioRef = useRef<HTMLAudioElement | null>(null);
-    const audioContextUnlocked = useRef(false);
+    // Audio Context Ref
+    const audioCtxRef = useRef<AudioContext | null>(null);
+    const audioBufferRef = useRef<AudioBuffer | null>(null);
+    const sourceRef = useRef<AudioBufferSourceNode | null>(null);
     const [isComplete, setIsComplete] = useState(false);
 
-    // Initialize Audio
+    // Initialize Audio Context & Fetch File
     useEffect(() => {
-        try {
-            const audio = new Audio('/djs.mp3');
-            audio.loop = true;
-            audio.preload = 'auto'; // Preload
-            audioRef.current = audio;
-        } catch (e) {
-            console.error("Audio init failed", e);
-        }
+        const initAudio = async () => {
+            try {
+                const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+                if (!AudioContext) return;
+
+                audioCtxRef.current = new AudioContext();
+
+                // Fetch Audio File
+                const response = await fetch('/djs.mp3');
+                const arrayBuffer = await response.arrayBuffer();
+
+                // Decode
+                audioCtxRef.current.decodeAudioData(arrayBuffer, (decodedBuffer) => {
+                    audioBufferRef.current = decodedBuffer;
+                }, (e) => {
+                    console.error("Audio decode failed", e);
+                });
+
+            } catch (e) {
+                console.error("Audio init/fetch failed", e);
+            }
+        };
+
+        initAudio();
+
         return () => {
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current = null;
+            // Cleanup
+            if (audioCtxRef.current) {
+                audioCtxRef.current.close();
             }
         };
     }, []);
 
-    // Unlock Audio for Mobile (Warmup)
+    // Unlock Audio Context (Silent Resume)
     const unlockAudio = () => {
-        if (audioContextUnlocked.current || !audioRef.current) return;
-
-        // Play silent brief note to unlock
-        audioRef.current.volume = 0;
-        const playPromise = audioRef.current.play();
-
-        if (playPromise !== undefined) {
-            playPromise
-                .then(() => {
-                    // Unlocked
-                    if (audioRef.current) {
-                        audioRef.current.pause();
-                        audioRef.current.currentTime = 0;
-                        audioRef.current.volume = 1; // Restore volume
-                        audioContextUnlocked.current = true;
-                    }
-                })
-                .catch(error => {
-                    console.error("Audio unlock failed", error);
-                });
+        if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+            audioCtxRef.current.resume().catch(e => console.error("Audio resume failed", e));
         }
     };
 
     // Alarm Sound Logic
     const playAlarm = () => {
-        if (!audioRef.current) return;
+        if (!audioCtxRef.current || !audioBufferRef.current) return;
 
-        // Ensure volume is up
-        audioRef.current.volume = 1;
-        audioRef.current.currentTime = 0;
+        // Stop previous if running
+        stopAlarm();
 
-        const playPromise = audioRef.current.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(e => {
-                console.error("Audio playback failed (Autoplay blocked?)", e);
-                // Fallback: alert? or just silent
-            });
+        try {
+            const source = audioCtxRef.current.createBufferSource();
+            source.buffer = audioBufferRef.current;
+            source.loop = true;
+            source.connect(audioCtxRef.current.destination);
+            source.start(0);
+            sourceRef.current = source;
+        } catch (e) {
+            console.error("Audio playback failed", e);
         }
     };
 
     const stopAlarm = () => {
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
+        if (sourceRef.current) {
+            try {
+                sourceRef.current.stop();
+            } catch (e) {
+                // Ignore if already stopped
+            }
+            sourceRef.current = null;
         }
     };
 
