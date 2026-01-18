@@ -21,6 +21,7 @@ import { ZoneList } from './pages/ZoneList';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { TicketDetail } from './pages/TicketDetail';
+import { Focus } from './pages/Focus';
 
 const App: React.FC = () => {
   return (
@@ -28,6 +29,7 @@ const App: React.FC = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/map" element={<MapExplore />} />
+        <Route path="/focus" element={<Focus />} />
         <Route path="/store/:id" element={<StoreDetail />} />
         <Route path="/select-seat" element={<SeatSelection />} />
         <Route path="/confirm-order" element={<OrderConfirmation />} />

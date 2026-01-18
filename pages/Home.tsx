@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MapPin, ChevronDown, Search, BookOpen, Users, LayoutGrid, Moon, User, Loader2, Armchair, Bell, Megaphone, Info, AlertTriangle } from 'lucide-react';
+import { MapPin, ChevronDown, Search, BookOpen, Users, LayoutGrid, Moon, User, Loader2, Armchair, Bell, Megaphone, Info, AlertTriangle, Timer } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import { shopsApi, authApi, announcementsApi, Shop, Zone, Announcement } from '../src/services/api';
 
@@ -193,7 +193,12 @@ export const Home: React.FC = () => {
             <span className="font-medium text-lg text-text-primary">{displayShopName}</span>
             <ChevronDown className="text-text-secondary w-4 h-4" />
           </div>
-
+          <button
+            onClick={() => navigate('/focus')}
+            className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary active:scale-95 transition-transform"
+          >
+            <Timer className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Search Bar */}
