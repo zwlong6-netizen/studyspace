@@ -425,3 +425,40 @@ VALUES (
 -- 允许 shop_id 为 NULL (超级管理员)，但需注意 NULL 的唯一性处理 (Standard logic applies)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_shop_username ON users(shop_id, username);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_shop_phone ON users(shop_id, phone);
+
+-- =====================================================
+-- 10. 评价表 (reviews)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS reviews (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    shop_id UUID NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+    zone_name TEXT,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    content TEXT,
+    images TEXT[] DEFAULT '{}',
+    is_anonymous BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 索引
+CREATE INDEX IF NOT EXISTS idx_reviews_shop ON reviews(shop_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_order ON reviews(order_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_order_unique ON reviews(order_id); -- 每个订单只能评价一次
+
+-- RLS 策略
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Reviews are viewable by everyone" ON reviews
+    FOR SELECT USING (true);
+
+CREATE POLICY "Users can create own reviews" ON reviews
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Users can update own reviews" ON reviews
+    FOR UPDATE USING (true);
+
+CREATE POLICY "Admins can delete reviews" ON reviews
+    FOR DELETE USING (true);
+

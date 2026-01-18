@@ -22,6 +22,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { TicketDetail } from './pages/TicketDetail';
 import { Focus } from './pages/Focus';
+import { ReviewList } from './pages/ReviewList';
 
 const App: React.FC = () => {
   return (
@@ -37,6 +38,7 @@ const App: React.FC = () => {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/zones" element={<ZoneList />} />
         <Route path="/ticket/:id" element={<TicketDetail />} />
+        <Route path="/reviews/:shopId" element={<ReviewList />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/stats" element={<StatsReport />} />
         <Route path="/login" element={<Login />} />

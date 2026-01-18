@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Timer, Clock, QrCode, Loader2 } from 'lucide-react';
+import { Timer, Clock, QrCode, Loader2, Star } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
-import { ordersApi, Order, authApi } from '../src/services/api';
+import { ordersApi, Order, authApi, reviewsApi } from '../src/services/api';
 
 type TabType = 'active' | 'completed' | 'cancelled' | 'pending';
 
@@ -13,6 +13,12 @@ export const OrderList: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelOrderId, setCancelOrderId] = useState<string | null>(null);
+  const [reviewOrderId, setReviewOrderId] = useState<string | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewContent, setReviewContent] = useState('');
+  const [reviewAnonymous, setReviewAnonymous] = useState(false);
+  const [reviewedOrders, setReviewedOrders] = useState<Set<string>>(new Set());
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   const handleCancelConfirm = () => {
     if (!cancelOrderId) return;
@@ -46,6 +52,25 @@ export const OrderList: React.FC = () => {
         const response = await ordersApi.getOrders(undefined, currentShopId || undefined);
         if (response.success) {
           setOrders(response.orders);
+
+          // 检查已完成订单的评价状态
+          const completedOrders = response.orders.filter(o => o.status === 'completed');
+          const reviewedSet = new Set<string>();
+
+          await Promise.all(
+            completedOrders.map(async (order) => {
+              try {
+                const reviewRes = await reviewsApi.getOrderReview(order.id);
+                if (reviewRes.success && reviewRes.review) {
+                  reviewedSet.add(order.id);
+                }
+              } catch (e) {
+                // 忽略错误
+              }
+            })
+          );
+
+          setReviewedOrders(reviewedSet);
         }
       } catch (error) {
         console.log('Failed to fetch orders:', error);
@@ -236,8 +261,18 @@ export const OrderList: React.FC = () => {
 
                   {!isActiveStyle && (
                     <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
-                      {displayStatus === 'completed' && (
-                        <button className="flex min-w-[72px] cursor-pointer items-center justify-center rounded-lg h-8 px-3 border border-gray-200 bg-white text-primary text-xs font-bold hover:bg-gray-50 transition-colors">评价</button>
+                      {displayStatus === 'completed' && !reviewedOrders.has(order.id) && (
+                        <button
+                          onClick={() => setReviewOrderId(order.id)}
+                          className="flex min-w-[72px] cursor-pointer items-center justify-center rounded-lg h-8 px-3 border border-gray-200 bg-white text-primary text-xs font-bold hover:bg-gray-50 transition-colors"
+                        >
+                          评价
+                        </button>
+                      )}
+                      {displayStatus === 'completed' && reviewedOrders.has(order.id) && (
+                        <span className="flex min-w-[72px] items-center justify-center rounded-lg h-8 px-3 bg-gray-100 text-gray-400 text-xs font-bold">
+                          已评价
+                        </span>
                       )}
                       <button className="flex min-w-[72px] cursor-pointer items-center justify-center rounded-lg h-8 px-3 border border-gray-200 bg-white text-brand-green text-xs font-bold hover:bg-gray-50 transition-colors">再来一单</button>
                     </div>
@@ -282,6 +317,95 @@ export const OrderList: React.FC = () => {
                 className="flex-1 h-10 rounded-lg bg-red-50 text-red-600 font-bold text-sm hover:bg-red-100 transition-colors"
               >
                 确认取消
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {reviewOrderId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl w-full max-w-sm p-6 shadow-xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-primary mb-4">评价订单</h3>
+
+            {/* Star Rating */}
+            <div className="flex justify-center gap-2 mb-4">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setReviewRating(star)}
+                  className="p-1 transition-transform hover:scale-110"
+                >
+                  <Star
+                    size={32}
+                    className={star <= reviewRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+                  />
+                </button>
+              ))}
+            </div>
+
+            {/* Content */}
+            <textarea
+              value={reviewContent}
+              onChange={(e) => setReviewContent(e.target.value)}
+              placeholder="分享您的体验... (选填)"
+              className="w-full h-24 p-3 border border-gray-200 rounded-lg text-sm resize-none focus:outline-none focus:border-primary"
+            />
+
+            {/* Anonymous */}
+            <label className="flex items-center gap-2 mt-3 text-sm text-gray-500">
+              <input
+                type="checkbox"
+                checked={reviewAnonymous}
+                onChange={(e) => setReviewAnonymous(e.target.checked)}
+                className="rounded"
+              />
+              匿名评价
+            </label>
+
+            {/* Buttons */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setReviewOrderId(null);
+                  setReviewRating(5);
+                  setReviewContent('');
+                  setReviewAnonymous(false);
+                }}
+                className="flex-1 h-10 rounded-lg border border-gray-200 text-gray-600 font-medium text-sm hover:bg-gray-50 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                disabled={submittingReview}
+                onClick={async () => {
+                  setSubmittingReview(true);
+                  try {
+                    const res = await reviewsApi.createReview({
+                      order_id: reviewOrderId,
+                      rating: reviewRating,
+                      content: reviewContent || undefined,
+                      is_anonymous: reviewAnonymous
+                    });
+                    if (res.success) {
+                      setReviewedOrders(prev => new Set([...prev, reviewOrderId]));
+                      setReviewOrderId(null);
+                      setReviewRating(5);
+                      setReviewContent('');
+                      setReviewAnonymous(false);
+                    } else {
+                      alert(res.message || '评价失败');
+                    }
+                  } catch (e) {
+                    alert('评价失败，请重试');
+                  } finally {
+                    setSubmittingReview(false);
+                  }
+                }}
+                className="flex-1 h-10 rounded-lg bg-primary text-white font-bold text-sm hover:bg-[#333333] transition-colors disabled:opacity-50"
+              >
+                {submittingReview ? '提交中...' : '提交评价'}
               </button>
             </div>
           </div>

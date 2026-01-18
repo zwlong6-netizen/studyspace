@@ -567,11 +567,72 @@ export async function checkApiHealth(): Promise<boolean> {
 }
 
 // 默认导出所有 API
+// =====================================================
+// 评价 API
+// =====================================================
+
+export interface Review {
+    id: string;
+    order_id: string;
+    user_id: string;
+    shop_id: string;
+    zone_name?: string;
+    rating: number;
+    content?: string;
+    images?: string[];
+    is_anonymous: boolean;
+    created_at: string;
+    users?: {
+        username: string;
+        avatar?: string;
+    };
+}
+
+export const reviewsApi = {
+    /**
+     * 创建评价
+     */
+    async createReview(data: {
+        order_id: string;
+        rating: number;
+        content?: string;
+        is_anonymous?: boolean;
+    }): Promise<{ success: boolean; message: string; review?: Review }> {
+        return request('/reviews', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+
+    /**
+     * 获取门店评价列表
+     */
+    async getShopReviews(shopId: string, limit = 10, offset = 0): Promise<{ success: boolean; reviews: Review[] }> {
+        return request(`/reviews/shop/${shopId}?limit=${limit}&offset=${offset}`);
+    },
+
+    /**
+     * 获取订单的评价
+     */
+    async getOrderReview(orderId: string): Promise<{ success: boolean; review: Review | null }> {
+        return request(`/reviews/order/${orderId}`);
+    },
+
+    /**
+     * 获取门店评价统计
+     */
+    async getShopReviewStats(shopId: string): Promise<{ success: boolean; stats: { total: number; avgRating: number } }> {
+        return request(`/reviews/shop/${shopId}/stats`);
+    }
+};
+
 export default {
     auth: authApi,
     shops: shopsApi,
     seats: seatsApi,
     orders: ordersApi,
     announcements: announcementsApi,
+    reviews: reviewsApi,
     checkHealth: checkApiHealth,
 };
+

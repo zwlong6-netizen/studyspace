@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft, Share2, Heart, MapPin, Navigation, Wifi, VolumeX, Zap, Droplets, ChevronDown, ChevronRight, Star, Loader2 } from 'lucide-react';
-import { shopsApi, Shop } from '../src/services/api';
+import { shopsApi, Shop, reviewsApi, Review } from '../src/services/api';
 
 // 默认店铺数据
 const defaultStore: Shop = {
@@ -28,6 +28,8 @@ export const StoreDetail: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [store, setStore] = useState<Shop | null>(null);
   const [loading, setLoading] = useState(true);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewStats, setReviewStats] = useState<{ total: number; avgRating: number } | null>(null);
 
   // 获取传递的房间信息
   const selectedRoom = location.state?.selectedRoom as any;
@@ -66,6 +68,24 @@ export const StoreDetail: React.FC = () => {
 
     fetchStore();
   }, [id, location.state]);
+
+  // 获取评价数据
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!store?.id) return;
+      try {
+        const [reviewsRes, statsRes] = await Promise.all([
+          reviewsApi.getShopReviews(store.id, 3),
+          reviewsApi.getShopReviewStats(store.id)
+        ]);
+        if (reviewsRes.success) setReviews(reviewsRes.reviews);
+        if (statsRes.success) setReviewStats(statsRes.stats);
+      } catch (e) {
+        console.log('Failed to fetch reviews:', e);
+      }
+    };
+    fetchReviews();
+  }, [store?.id]);
 
   if (loading) {
     return (
@@ -187,36 +207,54 @@ export const StoreDetail: React.FC = () => {
 
         <div className="mb-4">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-primary text-lg font-bold">评价</h2>
-            <button className="text-primary text-sm font-medium flex items-center">
+            <h2 className="text-primary text-lg font-bold">评价 {reviewStats ? `(${reviewStats.total})` : ''}</h2>
+            <button
+              onClick={() => navigate(`/reviews/${store.id}`, { state: { shopName: store.name } })}
+              className="text-primary text-sm font-medium flex items-center"
+            >
               查看全部 <ChevronRight size={16} className="ml-0.5" />
             </button>
           </div>
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden">
-                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBt40nAfsgO8VCVKu0Fj3rZA-kkNpNGarKq5YY4KenYGkqwquLyiT53pNzypBYYItwG98rr8i7ZR3E7vrfP3Kw_CLFs6ESgdKBH8KrLUieIWJmP77UXKSpVihUHMCs3QxK_iTPrKiGqyPayIoRNeXg2F5vC4xTXPZ7Nu-__MY5vGoHwHbu7kd8jBltlcWtlVmQW46BDHw2EBvz8DOTae4UpbjUwkqWpn5nHlA7LK_OPj3WHMMY_ZQsaBRsBKxcx6R-D9ffQC2oYZNg" alt="User" className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-primary">陈莎莎</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex text-primary">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <Star key={i} size={12} className="fill-current" />
-                    ))}
+
+          {reviews.length > 0 ? (
+            <div className="space-y-3">
+              {reviews.map((review) => (
+                <div key={review.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden">
+                      {review.users?.avatar ? (
+                        <img src={review.users.avatar} alt="User" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm font-bold">
+                          {review.users?.username?.charAt(0) || '匿'}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-primary">{review.users?.username || '匿名用户'}</p>
+                      <div className="flex items-center gap-2">
+                        <div className="flex text-yellow-400">
+                          {[1, 2, 3, 4, 5].map((i) => (
+                            <Star key={i} size={12} className={i <= review.rating ? 'fill-current' : 'text-gray-300'} />
+                          ))}
+                        </div>
+                        <span className="text-xs text-gray-400">
+                          {new Date(review.created_at).toLocaleDateString('zh-CN')}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-xs text-gray-400">2天前</span>
+                  {review.content && (
+                    <p className="text-gray-600 text-sm leading-relaxed">{review.content}</p>
+                  )}
                 </div>
-              </div>
+              ))}
             </div>
-            <p className="text-gray-600 text-sm leading-relaxed mb-3">
-              这里的氛围太棒了！超级安静，WiFi速度也很快。强烈推荐靠窗的座位，采光特别好。
-            </p>
-            <div className="flex gap-2 overflow-x-auto no-scrollbar">
-              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8bbqrc3haVda1qZqKN_8IdsrfILVxpxgaI1B9V0doy9L_8S8joaE_Ml7eYs3u7Mj0P3ALn15OTp3nRCC7Uq1RfdRk8Db7ZG_Kwb30z9uLY2pr6w5ACpmn86uducFkiQELY4hXvI1Lfj9hwvsTe-Wxu_huNQf8vDqg13c8hOH5hfxGAVzaWx21YUvl3uUMtg_7q0vSsIUUP_qxHp04GfqNJHYxLtWmQmiAwVVcXMMDufTjVXtC_UnGcLS9szCgcRwP7EGsgVPYtG4" className="h-20 w-20 shrink-0 rounded-lg object-cover" alt="Review 1" />
-              <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCMpxRMCNz6d55xB8ZxtOPiXntjzUoSr1vaQngI3A9TbYIU5W7QGSe_XJvvtYdI-3SKy--8PFjOaEMVrL_ZB6_H9KTwuf7ACkfuFH524i3muM2geOsLO1ou3MxGW2GM7ltZdR3urhx63hDeFxMh_YMm8904Mj5yog9YG2UXn0MRub7AnCZX8f3Hq8WgQiJnCxK8YyMuKRoNesc4lDDENMLP7cogOBlnMbXSDcBx1i2xBsZrejQHZfgDAf7LYRXq0uF1LqmO4_KjEGg" className="h-20 w-20 shrink-0 rounded-lg object-cover" alt="Review 2" />
+          ) : (
+            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm text-center text-gray-400 text-sm">
+              暂无评价
             </div>
-          </div>
+          )}
         </div>
       </div>
 

@@ -13,6 +13,7 @@ import ordersRouter from './routes/orders.js';
 import announcementsRouter from './routes/announcements.js';
 import usersRouter from './routes/users.js';
 import statsRouter from './routes/stats.js';
+import reviewsRouter from './routes/reviews.js';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -29,6 +30,7 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/announcements', announcementsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/stats', statsRouter);
+app.use('/api/reviews', reviewsRouter);
 
 // Request logging (development)
 app.use((req, res, next) => {
