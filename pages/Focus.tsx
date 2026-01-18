@@ -111,7 +111,7 @@ export const Focus: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-brand-green relative overflow-hidden text-white transition-colors duration-500">
+        <div className="flex flex-col h-[100dvh] bg-brand-green relative overflow-hidden text-white transition-colors duration-500 overscroll-none touch-none">
             {/* Background Decor */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -translate-y-1/2 translate-x-1/4 pointer-events-none" />
             <div className="absolute bottom-0 left-0 w-80 h-80 bg-white opacity-5 rounded-full translate-y-1/3 -translate-x-1/4 pointer-events-none" />
