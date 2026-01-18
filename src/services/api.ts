@@ -16,16 +16,24 @@ interface ApiResponse<T = unknown> {
     [key: string]: T | boolean | string | undefined;
 }
 
+interface RequestOptions extends RequestInit {
+    useAdminToken?: boolean;
+}
+
 async function request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestOptions = {}
 ): Promise<T> {
-    // Admin token takes priority (for admin panel), then fall back to regular token (for APP)
-    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
+    const { useAdminToken, ...fetchOptions } = options;
+
+    // Strict separation: Use admin_token ONLY if explicitly requested
+    const token = useAdminToken
+        ? localStorage.getItem('admin_token')
+        : localStorage.getItem('token');
 
     const headers: HeadersInit = {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...fetchOptions.headers,
     };
 
     if (token) {
@@ -33,13 +41,12 @@ async function request<T>(
     }
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        ...options,
+        ...fetchOptions,
         headers,
     });
 
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
-        // 如果返回的不是 JSON（通常是 404 HTML 页面），说明后端可能未启动或路径错误
         throw new Error('后端服务不可用或路径错误 (Received HTML instead of JSON)');
     }
 
@@ -281,6 +288,7 @@ export const shopsApi = {
         return request('/shops', {
             method: 'POST',
             body: JSON.stringify(data),
+            useAdminToken: true
         });
     },
 
@@ -291,6 +299,7 @@ export const shopsApi = {
         return request(`/shops/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
+            useAdminToken: true
         });
     },
 
@@ -300,6 +309,7 @@ export const shopsApi = {
     async deleteShop(id: string): Promise<{ success: boolean; message: string }> {
         return request(`/shops/${id}`, {
             method: 'DELETE',
+            useAdminToken: true
         });
     }
 };
@@ -478,44 +488,33 @@ export interface Announcement {
 export const adminApi = {
     getAllOrders: async (shopId?: string) => {
         try {
-            // Use admin_token for admin panel authentication
-            const token = localStorage.getItem('admin_token');
             const query = shopId ? `?all=true&shop_id=${shopId}` : '?all=true';
-            const response = await fetch(`${API_BASE_URL}/orders${query}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            const contentType = response.headers.get("content-type");
-            if (contentType && contentType.indexOf("application/json") !== -1) {
-                return await response.json();
-            }
-            return { success: false, error: 'Invalid response' };
+            return await request(`/orders${query}`, { useAdminToken: true });
         } catch (err) {
             return { success: false, error: err };
         }
     },
     createUser: async (data: any): Promise<{ success: boolean; user?: any; message?: string }> => {
-        return request('/users', { method: 'POST', body: JSON.stringify(data) });
+        return request('/users', { method: 'POST', body: JSON.stringify(data), useAdminToken: true });
     },
     updateUser: async (id: string, data: any): Promise<{ success: boolean; user?: any; message?: string }> => {
-        return request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+        return request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data), useAdminToken: true });
     },
     deleteUser: async (id: string): Promise<{ success: boolean; message?: string }> => {
-        return request(`/users/${id}`, { method: 'DELETE' });
+        return request(`/users/${id}`, { method: 'DELETE', useAdminToken: true });
     },
     // Seat management
     getSeats: async (shopId: string): Promise<{ success: boolean; seats: any[] }> => {
-        return request(`/seats?shop_id=${shopId}&all=true`);
+        return request(`/seats?shop_id=${shopId}&all=true`, { useAdminToken: true });
     },
     createSeat: async (data: any): Promise<{ success: boolean; seat?: any; message?: string }> => {
-        return request('/seats', { method: 'POST', body: JSON.stringify(data) });
+        return request('/seats', { method: 'POST', body: JSON.stringify(data), useAdminToken: true });
     },
     updateSeat: async (id: string, data: any): Promise<{ success: boolean; seat?: any; message?: string }> => {
-        return request(`/seats/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+        return request(`/seats/${id}`, { method: 'PUT', body: JSON.stringify(data), useAdminToken: true });
     },
     deleteSeat: async (id: string): Promise<{ success: boolean; message?: string }> => {
-        return request(`/seats/${id}`, { method: 'DELETE' });
+        return request(`/seats/${id}`, { method: 'DELETE', useAdminToken: true });
     }
 };
 
