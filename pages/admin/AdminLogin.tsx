@@ -37,17 +37,14 @@ export const AdminLogin: React.FC = () => {
         setLoading(true);
 
         try {
-            // Note: shopId might be empty if they want "Global/Platform". 
-            // If shops are loaded, we force selection typically for Shop Admins.
-            // But for Super Admin (no shop_id), checking against a random shop might fail unless backend handles it.
-            // Backend DOES handle it (fallback to global admin if not found in shop).
-            const res = await authApi.login(username, password, shopId);
+            // Use adminLogin which stores to admin_token/admin_user (separate from APP)
+            const res = await authApi.adminLogin(username, password, shopId);
             if (res.success && res.user) {
                 if (res.user.role === 1) {
                     navigate('/admin');
                 } else {
                     setError('该账号没有管理员权限');
-                    authApi.logout(); // Clear invalid session
+                    authApi.adminLogout(); // Clear invalid admin session
                 }
             } else {
                 setError(res.message || '登录失败');

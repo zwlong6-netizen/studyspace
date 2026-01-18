@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Eye, MoreHorizontal, CheckCircle, Clock, XCircle, Calendar, CreditCard, Loader2 } from 'lucide-react';
-import { adminApi, Order } from '../../src/services/api';
+import { useOutletContext } from 'react-router-dom';
+import { Search, Filter, Eye, CheckCircle, Clock, XCircle, Calendar, CreditCard, Loader2, X, Ban } from 'lucide-react';
+import { adminApi, ordersApi } from '../../src/services/api';
 
 const OrderStatusBadge: React.FC<{ status: string }> = ({ status }) => {
     const styles = {
@@ -30,30 +31,56 @@ const OrderStatusBadge: React.FC<{ status: string }> = ({ status }) => {
 };
 
 export const AdminOrders: React.FC = () => {
+    const { currentShopId } = useOutletContext<{ currentShopId: string }>();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        loadOrders();
-    }, []);
+    // Detail Modal
+    const [selectedOrder, setSelectedOrder] = useState<any>(null);
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-    const loadOrders = async () => {
+    useEffect(() => {
+        if (currentShopId) {
+            loadOrders(currentShopId);
+        }
+    }, [currentShopId]);
+
+    const loadOrders = async (shopId: string) => {
         setLoading(true);
         try {
-            console.log("Fetching all orders...");
-            const res = await adminApi.getAllOrders();
-            console.log("Admin orders response:", res);
+            const res = await adminApi.getAllOrders(shopId);
             if (res.success && res.orders) {
                 setOrders(res.orders);
-            } else {
-                console.error("Failed to fetch orders or no orders returned:", res);
             }
         } catch (error) {
             console.error("Failed to load orders", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleViewDetail = (order: any) => {
+        setSelectedOrder(order);
+        setIsDetailOpen(true);
+    };
+
+    const handleCancelOrder = async (orderId: string) => {
+        if (!confirm('确定要取消这个订单吗？')) return;
+        try {
+            const res = await ordersApi.cancelOrder(orderId);
+            if (res.success) {
+                setOrders(orders.map(o =>
+                    o.id === orderId ? { ...o, status: 'cancelled' } : o
+                ));
+                if (selectedOrder?.id === orderId) {
+                    setSelectedOrder({ ...selectedOrder, status: 'cancelled' });
+                }
+            }
+        } catch (error) {
+            console.error('Cancel order failed:', error);
+            alert('取消订单失败');
         }
     };
 
@@ -72,7 +99,7 @@ export const AdminOrders: React.FC = () => {
                     <p className="text-gray-500 mt-1">查看和管理系统内的所有历史订单记录。</p>
                 </div>
                 <button
-                    onClick={loadOrders}
+                    onClick={() => currentShopId && loadOrders(currentShopId)}
                     className="bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-xl font-medium flex items-center gap-2 hover:bg-gray-50 transition-colors shadow-sm">
                     <Filter size={18} />
                     刷新列表
@@ -111,7 +138,7 @@ export const AdminOrders: React.FC = () => {
                         placeholder="搜索订单号、用户名、手机号..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green outline-none transition-all"
+                        className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#3E6950]/20 focus:border-[#3E6950] outline-none transition-all"
                     />
                 </div>
             </div>
@@ -136,7 +163,7 @@ export const AdminOrders: React.FC = () => {
                                 <tr>
                                     <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                                         <div className="flex flex-col items-center gap-2">
-                                            <Loader2 className="w-8 h-8 text-brand-green animate-spin" />
+                                            <Loader2 className="w-8 h-8 text-[#3E6950] animate-spin" />
                                             加载中...
                                         </div>
                                     </td>
@@ -190,12 +217,22 @@ export const AdminOrders: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                                                <button className="p-2 text-gray-500 hover:text-brand-green hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100" title="查看详情">
+                                                <button
+                                                    onClick={() => handleViewDetail(order)}
+                                                    className="p-2 text-gray-500 hover:text-[#3E6950] hover:bg-green-50 rounded-lg transition-colors"
+                                                    title="查看详情"
+                                                >
                                                     <Eye size={18} />
                                                 </button>
-                                                <button className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors" title="更多">
-                                                    <MoreHorizontal size={18} />
-                                                </button>
+                                                {order.status === 'active' && (
+                                                    <button
+                                                        onClick={() => handleCancelOrder(order.id)}
+                                                        className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="取消订单"
+                                                    >
+                                                        <Ban size={18} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -205,6 +242,64 @@ export const AdminOrders: React.FC = () => {
                     </table>
                 </div>
             </div>
+
+            {/* Order Detail Modal */}
+            {isDetailOpen && selectedOrder && (
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 relative">
+                        <button onClick={() => setIsDetailOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                            <X size={20} />
+                        </button>
+                        <h2 className="text-xl font-bold mb-4">订单详情</h2>
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <span className="text-gray-600">订单号</span>
+                                <span className="font-mono font-medium">{selectedOrder.id}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <span className="text-gray-600">状态</span>
+                                <OrderStatusBadge status={selectedOrder.status} />
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <span className="text-gray-600">用户</span>
+                                <span className="font-medium">{selectedOrder.users?.username || '-'}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <span className="text-gray-600">店铺</span>
+                                <span className="font-medium">{selectedOrder.shops?.name || '-'}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <span className="text-gray-600">座位</span>
+                                <span className="font-medium">{selectedOrder.seats?.zone_name} {selectedOrder.seats?.label}座</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <span className="text-gray-600">时段</span>
+                                <span className="font-medium">{selectedOrder.start_time} - {selectedOrder.end_time}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <span className="text-gray-600">金额</span>
+                                <span className="font-bold text-lg">¥{selectedOrder.final_price || selectedOrder.original_price}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <span className="text-gray-600">下单时间</span>
+                                <span className="font-medium">{new Date(selectedOrder.created_at).toLocaleString('zh-CN')}</span>
+                            </div>
+
+                            {selectedOrder.status === 'active' && (
+                                <div className="pt-4 border-t">
+                                    <button
+                                        onClick={() => handleCancelOrder(selectedOrder.id)}
+                                        className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <Ban size={18} />
+                                        取消订单
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

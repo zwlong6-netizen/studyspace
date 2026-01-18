@@ -1,7 +1,35 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { supabase } from '../config/supabase.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
+
+// Middleware to check if user is admin
+const adminMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            res.status(401).json({ success: false, message: 'Unauthorized' });
+            return;
+        }
+
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', userId)
+            .single();
+
+        if (error || !user || user.role !== 1) {
+            res.status(403).json({ success: false, message: 'Forbidden: Admin access required' });
+            return;
+        }
+
+        next();
+    } catch (error) {
+        console.error('Admin check error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
 
 /**
  * GET /api/seats
@@ -10,7 +38,7 @@ const router = Router();
  */
 router.get('/', async (req: Request, res: Response): Promise<void> => {
     try {
-        const { shop_id, zone } = req.query;
+        const { shop_id, zone, all } = req.query;
 
         if (!shop_id) {
             res.status(400).json({ success: false, message: '请提供店铺ID' });
@@ -21,8 +49,12 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
             .from('seats')
             .select('*')
             .eq('shop_id', shop_id as string)
-            .eq('is_active', true)
             .order('label');
+
+        // If not admin requesting all, only show active
+        if (all !== 'true') {
+            query = query.eq('is_active', true);
+        }
 
         if (zone && typeof zone === 'string') {
             query = query.eq('zone_name', zone);
@@ -187,6 +219,86 @@ router.get('/schedules/batch', async (req: Request, res: Response): Promise<void
     } catch (error) {
         console.error('Get batch schedules error:', error);
         res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+/**
+ * POST /api/seats
+ * Create a new seat (Admin only)
+ */
+router.post('/', authMiddleware, adminMiddleware, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { shop_id, zone_name, label, type, is_active } = req.body;
+
+        // Validate type - only allow values that match DB constraint
+        const validTypes = ['standard', 'window', 'vip'];
+        const seatType = validTypes.includes(type) ? type : 'standard';
+
+        const { data: seat, error } = await supabase
+            .from('seats')
+            .insert({
+                shop_id,
+                zone_name,
+                label,
+                type: seatType,
+                is_active: is_active !== false
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.status(201).json({ success: true, seat });
+    } catch (error) {
+        console.error('Create seat error:', error);
+        res.status(500).json({ success: false, message: 'Failed to create seat' });
+    }
+});
+
+/**
+ * PUT /api/seats/:id
+ * Update a seat (Admin only)
+ */
+router.put('/:id', authMiddleware, adminMiddleware, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+
+        const { data: seat, error } = await supabase
+            .from('seats')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.json({ success: true, seat });
+    } catch (error) {
+        console.error('Update seat error:', error);
+        res.status(500).json({ success: false, message: 'Failed to update seat' });
+    }
+});
+
+/**
+ * DELETE /api/seats/:id
+ * Delete a seat (Admin only)
+ */
+router.delete('/:id', authMiddleware, adminMiddleware, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        const { error } = await supabase
+            .from('seats')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        res.json({ success: true, message: 'Seat deleted successfully' });
+    } catch (error) {
+        console.error('Delete seat error:', error);
+        res.status(500).json({ success: false, message: 'Failed to delete seat' });
     }
 });
 

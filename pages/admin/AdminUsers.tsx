@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Filter, MoreVertical, Shield, UserX, AlertCircle } from 'lucide-react';
+import { useOutletContext } from 'react-router-dom';
+import { Search, Filter, Shield, Edit2, Trash2, Plus, X, Loader2 } from 'lucide-react';
 import { getMemberLevelName, getMemberLevelColor } from '../../src/utils/memberLevel';
+import { adminApi } from '../../src/services/api';
 
 interface User {
     id: string;
     username: string;
     phone?: string;
     shop_id?: string;
-    member_level: number; // Updated to number
+    member_level: number;
     role: number;
     total_hours: number;
     consecutive_days: number;
@@ -17,18 +19,36 @@ interface User {
 }
 
 export const AdminUsers: React.FC = () => {
+    const { currentShopId } = useOutletContext<{ currentShopId: string }>();
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    useEffect(() => {
-        fetchUsers();
-    }, []);
+    // Modal state
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [formData, setFormData] = useState({
+        username: '',
+        password: '',
+        phone: '',
+        shop_id: '',
+        role: 0,
+        member_level: 0,
+        balance: 0
+    });
 
-    const fetchUsers = async () => {
+    useEffect(() => {
+        if (currentShopId) {
+            fetchUsers(currentShopId);
+        }
+    }, [currentShopId]);
+
+    const fetchUsers = async (shopId: string) => {
         try {
-            const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:3001/api/users', {
+            setLoading(true);
+            // Use admin_token for admin panel authentication
+            const token = localStorage.getItem('admin_token');
+            const response = await fetch(`http://localhost:3001/api/users?shop_id=${shopId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -44,6 +64,69 @@ export const AdminUsers: React.FC = () => {
         }
     };
 
+    const handleCreate = () => {
+        setEditingUser(null);
+        setFormData({
+            username: '',
+            password: '',
+            phone: '',
+            shop_id: currentShopId,
+            role: 0,
+            member_level: 0,
+            balance: 0
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleEdit = (user: User) => {
+        setEditingUser(user);
+        setFormData({
+            username: user.username,
+            password: '',
+            phone: user.phone || '',
+            shop_id: user.shop_id || currentShopId,
+            role: user.role || 0,
+            member_level: user.member_level,
+            balance: user.balance || 0
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('确定要删除该用户吗？此操作不可恢复。')) return;
+        try {
+            const res = await adminApi.deleteUser(id);
+            if (res.success) {
+                setUsers(users.filter(u => u.id !== id));
+            }
+        } catch (error) {
+            console.error('Delete failed:', error);
+            alert('删除失败');
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            if (editingUser) {
+                const res = await adminApi.updateUser(editingUser.id, formData);
+                if (res.success) {
+                    setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...res.user } : u));
+                    setIsModalOpen(false);
+                }
+            } else {
+                const res = await adminApi.createUser(formData);
+                if (res.success) {
+                    setUsers([res.user, ...users]);
+                    setIsModalOpen(false);
+                }
+            }
+        } catch (error) {
+            console.error('Submit failed:', error);
+            alert('保存失败');
+        }
+    };
+
     const filteredUsers = users.filter(user =>
         user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (user.phone && user.phone.includes(searchTerm))
@@ -52,8 +135,15 @@ export const AdminUsers: React.FC = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800">用户管理</h1>
-                <button className="bg-[#3E6950] text-white px-4 py-2 rounded-lg hover:bg-[#2c4a38] transition-colors">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">用户管理</h1>
+                    <p className="text-gray-500 mt-1">管理系统内的所有注册用户。</p>
+                </div>
+                <button
+                    onClick={handleCreate}
+                    className="bg-[#3E6950] text-white px-4 py-2 rounded-lg hover:bg-[#2c4a38] transition-colors flex items-center gap-2"
+                >
+                    <Plus size={20} />
                     添加用户
                 </button>
             </div>
@@ -65,8 +155,8 @@ export const AdminUsers: React.FC = () => {
                     <div className="text-2xl font-bold text-gray-900">{users.length}</div>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <div className="text-gray-500 text-sm mb-1">本月新增</div>
-                    <div className="text-2xl font-bold text-[#3E6950]">12</div>
+                    <div className="text-gray-500 text-sm mb-1">管理员</div>
+                    <div className="text-2xl font-bold text-[#3E6950]">{users.filter(u => u.role === 1).length}</div>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                     <div className="text-gray-500 text-sm mb-1">VIP 用户占比</div>
@@ -76,6 +166,7 @@ export const AdminUsers: React.FC = () => {
                 </div>
             </div>
 
+            {/* User Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-4 border-b border-gray-100 flex gap-4">
                     <div className="relative flex-1">
@@ -110,24 +201,23 @@ export const AdminUsers: React.FC = () => {
                             {loading ? (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                                        <Loader2 className="w-8 h-8 text-[#3E6950] animate-spin mx-auto mb-2" />
                                         加载中...
                                     </td>
                                 </tr>
                             ) : filteredUsers.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                                        暂无数据
+                                        暂无用户数据
                                     </td>
                                 </tr>
                             ) : (
                                 filteredUsers.map((user) => (
-                                    <tr key={user.id} className="hover:bg-gray-50">
+                                    <tr key={user.id} className="hover:bg-gray-50 group">
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
-                                                <div className="h-10 w-10 flex-shrink-0">
-                                                    <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
-                                                        {user.username[0].toUpperCase()}
-                                                    </div>
+                                                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
+                                                    {user.username[0].toUpperCase()}
                                                 </div>
                                                 <div className="ml-4">
                                                     <div className="text-sm font-medium text-gray-900">{user.username}</div>
@@ -151,15 +241,28 @@ export const AdminUsers: React.FC = () => {
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            ¥{user.balance.toFixed(2)}
+                                            ¥{(user.balance || 0).toFixed(2)}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {new Date(user.created_at).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button className="text-gray-400 hover:text-gray-600">
-                                                <MoreVertical className="w-5 h-5" />
-                                            </button>
+                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => handleEdit(user)}
+                                                    className="p-2 text-gray-500 hover:text-[#3E6950] hover:bg-green-50 rounded-lg transition-colors"
+                                                    title="编辑"
+                                                >
+                                                    <Edit2 size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(user.id)}
+                                                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="删除"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -168,6 +271,101 @@ export const AdminUsers: React.FC = () => {
                     </table>
                 </div>
             </div>
+
+            {/* User Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 relative">
+                        <button onClick={() => setIsModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                            <X size={20} />
+                        </button>
+                        <h2 className="text-xl font-bold mb-4">{editingUser ? '编辑用户' : '添加用户'}</h2>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">用户名 *</label>
+                                <input
+                                    required
+                                    className="w-full border border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-[#3E6950]/20 focus:border-[#3E6950] outline-none"
+                                    value={formData.username}
+                                    onChange={e => setFormData({ ...formData, username: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">手机号</label>
+                                <input
+                                    className="w-full border border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-[#3E6950]/20 focus:border-[#3E6950] outline-none"
+                                    value={formData.phone}
+                                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    密码 {editingUser ? '(留空不修改)' : '*'}
+                                </label>
+                                <input
+                                    type="password"
+                                    required={!editingUser}
+                                    className="w-full border border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-[#3E6950]/20 focus:border-[#3E6950] outline-none"
+                                    value={formData.password}
+                                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">账户余额</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        className="w-full border border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-[#3E6950]/20 focus:border-[#3E6950] outline-none"
+                                        value={formData.balance}
+                                        onChange={e => setFormData({ ...formData, balance: Number(e.target.value) })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">会员等级</label>
+                                    <select
+                                        className="w-full border border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-[#3E6950]/20 focus:border-[#3E6950] outline-none"
+                                        value={formData.member_level}
+                                        onChange={e => setFormData({ ...formData, member_level: Number(e.target.value) })}
+                                    >
+                                        <option value={0}>普通会员</option>
+                                        <option value={1}>白银会员</option>
+                                        <option value={2}>黄金会员</option>
+                                        <option value={3}>铂金会员</option>
+                                        <option value={4}>钻石会员</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="flex items-center">
+                                <input
+                                    type="checkbox"
+                                    id="isAdmin"
+                                    className="mr-2 w-4 h-4 text-[#3E6950] rounded"
+                                    checked={formData.role === 1}
+                                    onChange={e => setFormData({ ...formData, role: e.target.checked ? 1 : 0 })}
+                                />
+                                <label htmlFor="isAdmin" className="text-sm font-medium text-gray-700">设为管理员</label>
+                            </div>
+
+                            <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    取消
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-[#3E6950] text-white rounded-lg hover:bg-[#2c4a38] transition-colors"
+                                >
+                                    保存
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

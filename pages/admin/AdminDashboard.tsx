@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Users, ShoppingBag, CreditCard, Store, TrendingUp, ArrowUpRight } from 'lucide-react';
 import { shopsApi, adminApi } from '../../src/services/api';
 import { useNavigate, useOutletContext } from 'react-router-dom';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+const API_BASE_URL = 'http://localhost:3001';
 
 const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; trend?: string; color: string; trendUp?: boolean }> = ({ title, value, icon, trend, color, trendUp = true }) => (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
@@ -22,11 +25,21 @@ const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; 
     </div>
 );
 
+interface TrendDataPoint {
+    date: string;
+    revenue: number;
+    orders: number;
+    users: number;
+}
+
 export const AdminDashboard: React.FC = () => {
     const navigate = useNavigate();
     const { currentShopId } = useOutletContext<{ currentShopId: string }>();
     const [shopCount, setShopCount] = useState(0);
     const [orders, setOrders] = useState<any[]>([]);
+    const [trendData, setTrendData] = useState<TrendDataPoint[]>([]);
+    const [trendDays, setTrendDays] = useState(7);
+    const [trendLoading, setTrendLoading] = useState(false);
     const [stats, setStats] = useState({
         totalRevenue: 0,
         totalOrders: 0,
@@ -38,26 +51,18 @@ export const AdminDashboard: React.FC = () => {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                // Fetch Shops (Global count or filtered? Maybe just keep global for context or count 1 if filtered)
-                // If shop selected, maybe show 1? Or just keep total shops in system?
-                // For now, let's keep total shops in system as it's "Active Shops" in system.
-                // But user requested functions based on shop.
-                // If I am managing Shop A, I don't care about total active shops in system usually.
-                // But let's leave shopCount global for now unless asked.
                 const shopsRes = await shopsApi.getShops();
                 if (shopsRes.success) setShopCount(shopsRes.shops.length);
 
-                // Fetch Orders (Filtered by Shop)
                 if (currentShopId) {
                     const ordersRes = await adminApi.getAllOrders(currentShopId);
                     if (ordersRes.success && ordersRes.orders) {
                         const orders = ordersRes.orders;
                         setOrders(orders);
 
-                        // --- Calculate Stats Trend ---
                         const now = new Date();
                         const startOfThisWeek = new Date(now);
-                        startOfThisWeek.setDate(now.getDate() - now.getDay()); // Sunday
+                        startOfThisWeek.setDate(now.getDate() - now.getDay());
                         startOfThisWeek.setHours(0, 0, 0, 0);
 
                         const startOfLastWeek = new Date(startOfThisWeek);
@@ -85,7 +90,6 @@ export const AdminDashboard: React.FC = () => {
                             return sum + amount;
                         }, 0);
 
-                        // Helper for trend %
                         const getTrend = (current: number, prev: number) => {
                             if (prev === 0) return current > 0 ? 100 : 0;
                             return ((current - prev) / prev) * 100;
@@ -100,7 +104,6 @@ export const AdminDashboard: React.FC = () => {
                             totalRevenue,
                             totalOrders: orders.length,
                             uniqueUsers: Math.max(uniqueUsers, 0),
-                            // Add calculated trends to stats object (need to update state type or just use separate stats)
                             revenueTrend,
                             orderTrend
                         });
@@ -114,8 +117,36 @@ export const AdminDashboard: React.FC = () => {
         fetchDashboardData();
     }, [currentShopId]);
 
-    // Get recent 5 orders
+    // Fetch trend data
+    useEffect(() => {
+        const fetchTrendData = async () => {
+            if (!currentShopId) return;
+            setTrendLoading(true);
+            try {
+                const token = localStorage.getItem('admin_token');
+                const response = await fetch(`${API_BASE_URL}/api/stats/trend?shop_id=${currentShopId}&days=${trendDays}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    setTrendData(data.data);
+                }
+            } catch (err) {
+                console.error('Failed to fetch trend data', err);
+            } finally {
+                setTrendLoading(false);
+            }
+        };
+        fetchTrendData();
+    }, [currentShopId, trendDays]);
+
     const recentOrders = orders.slice(0, 5);
+
+    // Format date for chart display
+    const formatDate = (dateStr: string) => {
+        const d = new Date(dateStr);
+        return `${d.getMonth() + 1}/${d.getDate()}`;
+    };
 
     return (
         <div className="space-y-8">
@@ -146,7 +177,7 @@ export const AdminDashboard: React.FC = () => {
                 />
                 <StatCard
                     title="注册用户"
-                    value={stats.uniqueUsers.toLocaleString()} // Using mock baseline + real unique count
+                    value={stats.uniqueUsers.toLocaleString()}
                     icon={<Users className="text-orange-600" size={26} />}
                     trend="+8.1% 周环比"
                     color="bg-orange-50"
@@ -155,17 +186,61 @@ export const AdminDashboard: React.FC = () => {
 
             {/* Charts / Activity Split */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Main Chart Placeholder */}
+                {/* Main Chart */}
                 <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="text-lg font-bold text-gray-900">收入趋势</h3>
-                        <select className="bg-gray-50 border-none text-sm font-medium text-gray-600 rounded-lg px-3 py-1">
-                            <option>最近7天</option>
-                            <option>最近30天</option>
+                        <select
+                            value={trendDays}
+                            onChange={(e) => setTrendDays(Number(e.target.value))}
+                            className="bg-gray-50 border-none text-sm font-medium text-gray-600 rounded-lg px-3 py-1 focus:ring-2 focus:ring-brand-green/20"
+                        >
+                            <option value={7}>最近7天</option>
+                            <option value={14}>最近14天</option>
+                            <option value={30}>最近30天</option>
+                            <option value={60}>最近60天</option>
+                            <option value={90}>最近90天</option>
+                            <option value={180}>最近180天</option>
+                            <option value={365}>最近365天</option>
                         </select>
                     </div>
-                    <div className="h-64 flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-400">
-                        图表区域 (Chart.js / Recharts)
+                    <div className="h-64">
+                        {trendLoading ? (
+                            <div className="h-full flex items-center justify-center text-gray-400">
+                                加载中...
+                            </div>
+                        ) : trendData.length === 0 ? (
+                            <div className="h-full flex items-center justify-center bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-400">
+                                暂无数据
+                            </div>
+                        ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={trendData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                    <XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                                    <YAxis yAxisId="left" tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                                        formatter={(value: any, name: string) => {
+                                            const labels: Record<string, string> = { revenue: '收入', orders: '订单', users: '注册用户' };
+                                            const prefix = name === 'revenue' ? '¥' : '';
+                                            return [`${prefix}${value}`, labels[name] || name];
+                                        }}
+                                        labelFormatter={(label) => `日期: ${label}`}
+                                    />
+                                    <Legend
+                                        formatter={(value) => {
+                                            const labels: Record<string, string> = { revenue: '收入 (¥)', orders: '订单数', users: '注册用户' };
+                                            return labels[value] || value;
+                                        }}
+                                    />
+                                    <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                                    <Line yAxisId="right" type="monotone" dataKey="orders" stroke="#8b5cf6" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                                    <Line yAxisId="right" type="monotone" dataKey="users" stroke="#f97316" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        )}
                     </div>
                 </div>
 

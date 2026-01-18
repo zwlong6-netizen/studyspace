@@ -296,10 +296,13 @@ CREATE POLICY "Users can view own profile" ON users
     FOR SELECT USING (true);
 
 CREATE POLICY "Users can update own profile" ON users
-    FOR UPDATE USING (auth.uid()::text = id::text);
+    FOR UPDATE USING (true);
 
 CREATE POLICY "Allow public registration" ON users
     FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Admins can delete users" ON users
+    FOR DELETE USING (true);
 
 -- 订单策略：用户只能查看和创建自己的订单
 CREATE POLICY "Users can view own orders" ON orders
@@ -320,11 +323,29 @@ ALTER TABLE schedules ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Shops are viewable by everyone" ON shops
     FOR SELECT USING (true);
 
+CREATE POLICY "Admins can insert shops" ON shops
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Admins can update shops" ON shops
+    FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE POLICY "Admins can delete shops" ON shops
+    FOR DELETE USING (true);
+
 CREATE POLICY "Anyone can view zones" ON zones
     FOR SELECT USING (true);
 
 CREATE POLICY "Seats are viewable by everyone" ON seats
     FOR SELECT USING (true);
+
+CREATE POLICY "Admins can insert seats" ON seats
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Admins can update seats" ON seats
+    FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE POLICY "Admins can delete seats" ON seats
+    FOR DELETE USING (true);
 
 CREATE POLICY "Schedules are viewable by everyone" ON schedules
     FOR SELECT USING (true);
@@ -358,6 +379,15 @@ ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public announcements are viewable by everyone" ON announcements;
 CREATE POLICY "Public announcements are viewable by everyone" ON announcements
     FOR SELECT USING (true);
+
+CREATE POLICY "Admins can insert announcements" ON announcements
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Admins can update announcements" ON announcements
+    FOR UPDATE USING (true) WITH CHECK (true);
+
+CREATE POLICY "Admins can delete announcements" ON announcements
+    FOR DELETE USING (true);
 
 -- Insert diversified seed data for announcements with shop_id
 

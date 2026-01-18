@@ -6,6 +6,7 @@ import { AdminShops } from './pages/admin/AdminShops';
 import { AdminOrders } from './pages/admin/AdminOrders';
 import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminAnnouncements } from './pages/admin/AdminAnnouncements';
+import { AdminSeats } from './pages/admin/AdminSeats';
 import { AdminLogin } from './pages/admin/AdminLogin';
 import { Home } from './pages/Home';
 import { MapExplore } from './pages/MapExplore';
@@ -47,6 +48,7 @@ const App: React.FC = () => {
           <Route path="orders" element={<AdminOrders />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="announcements" element={<AdminAnnouncements />} />
+          <Route path="seats" element={<AdminSeats />} />
         </Route>
       </Routes>
     </Router>

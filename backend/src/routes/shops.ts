@@ -1,12 +1,39 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { supabase } from '../config/supabase.js';
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = Router();
 
+// Middleware to check if user is admin
+const adminMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) {
+            res.status(401).json({ success: false, message: 'Unauthorized' });
+            return;
+        }
+
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', userId)
+            .single();
+
+        if (error || !user || user.role !== 1) {
+            res.status(403).json({ success: false, message: 'Forbidden: Admin access required' });
+            return;
+        }
+
+        next();
+    } catch (error) {
+        console.error('Admin check error:', error);
+        res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
 /**
  * GET /api/shops
- * 获取店铺列表
- * Query params: location (可选)
+ * Get shop list
  */
 router.get('/', async (req: Request, res: Response): Promise<void> => {
     try {
@@ -17,7 +44,6 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
             .select('*')
             .order('rating', { ascending: false });
 
-        // 如果指定了位置，按位置筛选
         if (location && typeof location === 'string') {
             query = query.ilike('location', `%${location}%`);
         }
@@ -26,7 +52,7 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
 
         if (error) {
             console.error('Get shops error:', error);
-            res.status(500).json({ success: false, message: '获取店铺列表失败' });
+            res.status(500).json({ success: false, message: 'Failed to get shops' });
             return;
         }
 
@@ -36,13 +62,13 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
         });
     } catch (error) {
         console.error('Get shops error:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
 /**
  * GET /api/shops/:id
- * 获取店铺详情
+ * Get shop detail
  */
 router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     try {
@@ -55,7 +81,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
             .single();
 
         if (error || !shop) {
-            res.status(404).json({ success: false, message: '店铺不存在' });
+            res.status(404).json({ success: false, message: 'Shop not found' });
             return;
         }
 
@@ -65,13 +91,13 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
         });
     } catch (error) {
         console.error('Get shop detail error:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
 /**
  * GET /api/shops/:id/seats
- * 获取店铺的座位列表
+ * Get shop seats
  */
 router.get('/:id/seats', async (req: Request, res: Response): Promise<void> => {
     try {
@@ -93,7 +119,7 @@ router.get('/:id/seats', async (req: Request, res: Response): Promise<void> => {
 
         if (error) {
             console.error('Get seats error:', error);
-            res.status(500).json({ success: false, message: '获取座位列表失败' });
+            res.status(500).json({ success: false, message: 'Failed to get seats' });
             return;
         }
 
@@ -103,19 +129,19 @@ router.get('/:id/seats', async (req: Request, res: Response): Promise<void> => {
         });
     } catch (error) {
         console.error('Get seats error:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
 /**
  * GET /api/shops/:id/zones
- * 获取店铺的房间/区域列表
+ * Get shop zones
  */
 router.get('/:id/zones', async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
 
-        // 获取房间数据
+        // Get zones
         const { data: zones, error: zonesError } = await supabase
             .from('zones')
             .select('*')
@@ -124,11 +150,11 @@ router.get('/:id/zones', async (req: Request, res: Response): Promise<void> => {
 
         if (zonesError) {
             console.error('Get zones error:', zonesError);
-            res.status(500).json({ success: false, message: '获取房间列表失败' });
+            res.status(500).json({ success: false, message: 'Failed to get zones' });
             return;
         }
 
-        // 获取该店铺所有座位，用于统计每个房间的座位数
+        // Get seats for stats
         const { data: seats, error: seatsError } = await supabase
             .from('seats')
             .select('zone_name, is_active')
@@ -138,7 +164,6 @@ router.get('/:id/zones', async (req: Request, res: Response): Promise<void> => {
             console.error('Get seats for zones error:', seatsError);
         }
 
-        // 统计每个房间的座位数
         const zonesWithStats = (zones || []).map(zone => {
             const zoneSeats = (seats || []).filter(s => s.zone_name === zone.name);
             const availableSeats = zoneSeats.filter(s => s.is_active).length;
@@ -157,7 +182,101 @@ router.get('/:id/zones', async (req: Request, res: Response): Promise<void> => {
         });
     } catch (error) {
         console.error('Get zones error:', error);
-        res.status(500).json({ success: false, message: '服务器错误' });
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+/**
+ * POST /api/shops
+ * Create a new shop
+ */
+router.post('/', authMiddleware, adminMiddleware, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { name, location, address, price, image, tags, facilities, open_time, close_time, is_24h, description } = req.body;
+
+        const { data: shop, error } = await supabase
+            .from('shops')
+            .insert({
+                name,
+                location,
+                address,
+                price,
+                image,
+                tags: tags || [],
+                facilities: facilities || [],
+                open_time,
+                close_time,
+                is_24h,
+                description,
+                rating: 5.0, // Default rating
+                review_count: 0
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.status(201).json({ success: true, shop });
+    } catch (error) {
+        console.error('Create shop error:', error);
+        res.status(500).json({ success: false, message: 'Failed to create shop' });
+    }
+});
+
+/**
+ * PUT /api/shops/:id
+ * Update a shop
+ */
+router.put('/:id', authMiddleware, adminMiddleware, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+
+        const { data: shop, error } = await supabase
+            .from('shops')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.json({ success: true, shop });
+    } catch (error) {
+        console.error('Update shop error:', error);
+        res.status(500).json({ success: false, message: 'Failed to update shop' });
+    }
+});
+
+/**
+ * DELETE /api/shops/:id
+ * Delete a shop
+ */
+router.delete('/:id', authMiddleware, adminMiddleware, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        const { error } = await supabase
+            .from('shops')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            // Check for foreign key constraint violation
+            if (error.code === '23503') {
+                res.status(400).json({
+                    success: false,
+                    message: '无法删除：该店铺下还有关联的用户、座位或订单，请先删除或转移这些数据'
+                });
+                return;
+            }
+            throw error;
+        }
+
+        res.json({ success: true, message: 'Shop deleted successfully' });
+    } catch (error) {
+        console.error('Delete shop error:', error);
+        res.status(500).json({ success: false, message: 'Failed to delete shop' });
     }
 });
 

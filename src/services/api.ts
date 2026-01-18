@@ -20,7 +20,8 @@ async function request<T>(
     endpoint: string,
     options: RequestInit = {}
 ): Promise<T> {
-    const token = localStorage.getItem('token');
+    // Admin token takes priority (for admin panel), then fall back to regular token (for APP)
+    const token = localStorage.getItem('admin_token') || localStorage.getItem('token');
 
     const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -164,6 +165,57 @@ export const authApi = {
             }
         }
         return null;
+    },
+
+    // =====================================================
+    // Admin-specific auth methods (use separate storage keys)
+    // =====================================================
+
+    /**
+     * 管理员登录 (使用独立的存储键)
+     */
+    async adminLogin(username: string, password: string, shopId?: string): Promise<AuthResponse> {
+        const data = await request<AuthResponse>('/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ username, password, shop_id: shopId }),
+        });
+
+        if (data.token && data.user?.role === 1) {
+            localStorage.setItem('admin_token', data.token);
+            localStorage.setItem('admin_user', JSON.stringify(data.user));
+        }
+
+        return data;
+    },
+
+    /**
+     * 管理员退出登录
+     */
+    adminLogout(): void {
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_user');
+    },
+
+    /**
+     * 检查管理员是否已登录
+     */
+    isAdminLoggedIn(): boolean {
+        return !!localStorage.getItem('admin_token');
+    },
+
+    /**
+     * 获取管理员用户信息
+     */
+    getAdminUser(): User | null {
+        const userStr = localStorage.getItem('admin_user');
+        if (userStr) {
+            try {
+                return JSON.parse(userStr);
+            } catch {
+                return null;
+            }
+        }
+        return null;
     }
 };
 
@@ -220,6 +272,35 @@ export const shopsApi = {
      */
     async getShopZones(shopId: string): Promise<{ success: boolean; zones: Zone[] }> {
         return request(`/shops/${shopId}/zones`);
+    },
+
+    /**
+     *创建店铺 (Admin)
+     */
+    async createShop(data: Partial<Shop>): Promise<{ success: boolean; shop: Shop }> {
+        return request('/shops', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+
+    /**
+     * 更新店铺 (Admin)
+     */
+    async updateShop(id: string, data: Partial<Shop>): Promise<{ success: boolean; shop: Shop }> {
+        return request(`/shops/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
+    },
+
+    /**
+     * 删除店铺 (Admin)
+     */
+    async deleteShop(id: string): Promise<{ success: boolean; message: string }> {
+        return request(`/shops/${id}`, {
+            method: 'DELETE',
+        });
     }
 };
 
@@ -397,7 +478,8 @@ export interface Announcement {
 export const adminApi = {
     getAllOrders: async (shopId?: string) => {
         try {
-            const token = localStorage.getItem('token');
+            // Use admin_token for admin panel authentication
+            const token = localStorage.getItem('admin_token');
             const query = shopId ? `?all=true&shop_id=${shopId}` : '?all=true';
             const response = await fetch(`${API_BASE_URL}/orders${query}`, {
                 headers: {
@@ -412,6 +494,28 @@ export const adminApi = {
         } catch (err) {
             return { success: false, error: err };
         }
+    },
+    createUser: async (data: any): Promise<{ success: boolean; user?: any; message?: string }> => {
+        return request('/users', { method: 'POST', body: JSON.stringify(data) });
+    },
+    updateUser: async (id: string, data: any): Promise<{ success: boolean; user?: any; message?: string }> => {
+        return request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    },
+    deleteUser: async (id: string): Promise<{ success: boolean; message?: string }> => {
+        return request(`/users/${id}`, { method: 'DELETE' });
+    },
+    // Seat management
+    getSeats: async (shopId: string): Promise<{ success: boolean; seats: any[] }> => {
+        return request(`/seats?shop_id=${shopId}&all=true`);
+    },
+    createSeat: async (data: any): Promise<{ success: boolean; seat?: any; message?: string }> => {
+        return request('/seats', { method: 'POST', body: JSON.stringify(data) });
+    },
+    updateSeat: async (id: string, data: any): Promise<{ success: boolean; seat?: any; message?: string }> => {
+        return request(`/seats/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    },
+    deleteSeat: async (id: string): Promise<{ success: boolean; message?: string }> => {
+        return request(`/seats/${id}`, { method: 'DELETE' });
     }
 };
 

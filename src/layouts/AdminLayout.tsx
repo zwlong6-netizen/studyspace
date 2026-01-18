@@ -51,8 +51,9 @@ export const AdminLayout: React.FC = () => {
 
     useEffect(() => {
         const checkAuth = () => {
-            const token = localStorage.getItem('token');
-            const userStr = localStorage.getItem('user');
+            // Use admin-specific storage keys (separate from APP)
+            const token = localStorage.getItem('admin_token');
+            const userStr = localStorage.getItem('admin_user');
 
             if (!token || !userStr) {
                 navigate('/admin/login');
@@ -78,9 +79,9 @@ export const AdminLayout: React.FC = () => {
     }, [navigate]);
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        localStorage.removeItem('isLoggedIn');
+        // Clear admin-specific session (not APP session)
+        localStorage.removeItem('admin_token');
+        localStorage.removeItem('admin_user');
         navigate('/admin/login');
     };
 
@@ -146,6 +147,16 @@ export const AdminLayout: React.FC = () => {
                     >
                         <LayoutDashboard size={18} />
                         <span className="font-medium text-[15px]">公告管理</span>
+                    </NavLink>
+
+                    <NavLink
+                        to="/admin/seats"
+                        className={({ isActive }) =>
+                            `flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group ${isActive ? 'bg-brand-green text-white shadow-md shadow-brand-green/20' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`
+                        }
+                    >
+                        <LayoutDashboard size={18} />
+                        <span className="font-medium text-[15px]">座位管理</span>
                     </NavLink>
                 </nav>
 
