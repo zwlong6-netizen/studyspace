@@ -33,16 +33,67 @@ export const Focus: React.FC = () => {
 
     // Audio Ref
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const audioContextUnlocked = useRef(false);
     const [isComplete, setIsComplete] = useState(false);
+
+    // Initialize Audio
+    useEffect(() => {
+        try {
+            const audio = new Audio('/djs.mp3');
+            audio.loop = true;
+            audio.preload = 'auto'; // Preload
+            audioRef.current = audio;
+        } catch (e) {
+            console.error("Audio init failed", e);
+        }
+        return () => {
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
+            }
+        };
+    }, []);
+
+    // Unlock Audio for Mobile (Warmup)
+    const unlockAudio = () => {
+        if (audioContextUnlocked.current || !audioRef.current) return;
+
+        // Play silent brief note to unlock
+        audioRef.current.volume = 0;
+        const playPromise = audioRef.current.play();
+
+        if (playPromise !== undefined) {
+            playPromise
+                .then(() => {
+                    // Unlocked
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                        audioRef.current.currentTime = 0;
+                        audioRef.current.volume = 1; // Restore volume
+                        audioContextUnlocked.current = true;
+                    }
+                })
+                .catch(error => {
+                    console.error("Audio unlock failed", error);
+                });
+        }
+    };
 
     // Alarm Sound Logic
     const playAlarm = () => {
-        if (!audioRef.current) {
-            audioRef.current = new Audio('/djs.mp3');
-            audioRef.current.loop = true;
-        }
+        if (!audioRef.current) return;
+
+        // Ensure volume is up
+        audioRef.current.volume = 1;
         audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(e => console.error("Audio play failed", e));
+
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+            playPromise.catch(e => {
+                console.error("Audio playback failed (Autoplay blocked?)", e);
+                // Fallback: alert? or just silent
+            });
+        }
     };
 
     const stopAlarm = () => {
@@ -254,6 +305,7 @@ export const Focus: React.FC = () => {
 
                     <button
                         onClick={() => {
+                            unlockAudio();
                             if (mode === 'stopwatch') setIsSwRunning(!isSwRunning);
                             else setIsCdRunning(!isCdRunning);
                         }}
