@@ -4,8 +4,6 @@ import { shopsApi, adminApi } from '../../src/services/api';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const API_BASE_URL = 'http://localhost:3001';
-
 const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; trend?: string; color: string; trendUp?: boolean }> = ({ title, value, icon, trend, color, trendUp = true }) => (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
         <div className="absolute right-0 top-0 w-24 h-24 bg-gradient-to-br from-transparent to-gray-50 rounded-bl-full opacity-50 group-hover:scale-110 transition-transform origin-top-right"></div>
@@ -123,13 +121,9 @@ export const AdminDashboard: React.FC = () => {
             if (!currentShopId) return;
             setTrendLoading(true);
             try {
-                const token = localStorage.getItem('admin_token');
-                const response = await fetch(`${API_BASE_URL}/api/stats/trend?shop_id=${currentShopId}&days=${trendDays}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const data = await response.json();
-                if (data.success) {
-                    setTrendData(data.data);
+                const res = await adminApi.getTrendStats(currentShopId, trendDays);
+                if (res.success && res.data) {
+                    setTrendData(res.data);
                 }
             } catch (err) {
                 console.error('Failed to fetch trend data', err);

@@ -486,6 +486,12 @@ export interface Announcement {
 }
 
 export const adminApi = {
+    // Stats
+    getTrendStats: async (shopId: string, days: number = 7): Promise<{ success: boolean; data: any[] }> => {
+        const query = `?shop_id=${shopId}&days=${days}`;
+        return request(`/stats/trend${query}`, { useAdminToken: true });
+    },
+
     getAllOrders: async (shopId?: string) => {
         try {
             const query = shopId ? `?all=true&shop_id=${shopId}` : '?all=true';
