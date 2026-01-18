@@ -47,11 +47,13 @@ router.get('/trend', authMiddleware, adminMiddleware, async (req: Request, res: 
         }
 
         // Calculate date range
+        // Calculate date range (UTC) to avoid timezone discrepancies between dev/prod
         const endDate = new Date();
-        endDate.setHours(23, 59, 59, 999);
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - numDays + 1);
-        startDate.setHours(0, 0, 0, 0);
+        endDate.setUTCHours(23, 59, 59, 999);
+
+        const startDate = new Date(endDate);
+        startDate.setUTCDate(startDate.getUTCDate() - numDays + 1);
+        startDate.setUTCHours(0, 0, 0, 0);
 
         const startDateStr = startDate.toISOString();
         const endDateStr = endDate.toISOString();
@@ -88,7 +90,8 @@ router.get('/trend', authMiddleware, adminMiddleware, async (req: Request, res: 
         const dateMap: Record<string, { date: string; revenue: number; orders: number; users: number }> = {};
 
         // Initialize all dates in range
-        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        // Initialize all dates in range (Iterate in UTC)
+        for (let d = new Date(startDate); d <= endDate; d.setUTCDate(d.getUTCDate() + 1)) {
             const dateKey = d.toISOString().split('T')[0];
             dateMap[dateKey] = { date: dateKey, revenue: 0, orders: 0, users: 0 };
         }
