@@ -272,7 +272,7 @@ export const Focus: React.FC = () => {
 
             {/* Completion Modal */}
             {isComplete && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-fade-in">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fade-in">
                     <div className="flex flex-col gap-6 p-8 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl">
                         <button
                             onClick={handleRestart}
