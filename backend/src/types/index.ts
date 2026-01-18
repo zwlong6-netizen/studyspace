@@ -109,6 +109,7 @@ export interface CreateOrderRequest {
 export interface JwtPayload {
     userId: string;
     username: string;
+    role?: 'user' | 'admin';
     iat?: number;
     exp?: number;
 }

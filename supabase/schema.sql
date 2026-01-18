@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS users (
     focus_points INTEGER DEFAULT 0,
     balance DECIMAL(10, 2) DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_visible INTEGER DEFAULT 1
 );
 
 -- 创建用户更新触发器
@@ -61,7 +62,8 @@ CREATE TABLE IF NOT EXISTS shops (
     is_24h BOOLEAN DEFAULT FALSE,
     latitude DECIMAL(10, 6),
     longitude DECIMAL(10, 6),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_visible INTEGER DEFAULT 1
 );
 
 -- =====================================================
@@ -75,7 +77,8 @@ CREATE TABLE IF NOT EXISTS zones (
     price DECIMAL(10,2) NOT NULL,
     image TEXT,
     facilities TEXT[],
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_visible INTEGER DEFAULT 1
 );
 
 -- =====================================================
@@ -91,6 +94,7 @@ CREATE TABLE IF NOT EXISTS seats (
     position_y INTEGER DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_visible INTEGER DEFAULT 1,
     UNIQUE(shop_id, label)
 );
 
@@ -321,7 +325,7 @@ ALTER TABLE seats ENABLE ROW LEVEL SECURITY;
 ALTER TABLE schedules ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Shops are viewable by everyone" ON shops
-    FOR SELECT USING (true);
+    FOR SELECT USING (is_visible = 1);
 
 CREATE POLICY "Admins can insert shops" ON shops
     FOR INSERT WITH CHECK (true);
@@ -333,10 +337,10 @@ CREATE POLICY "Admins can delete shops" ON shops
     FOR DELETE USING (true);
 
 CREATE POLICY "Anyone can view zones" ON zones
-    FOR SELECT USING (true);
+    FOR SELECT USING (is_visible = 1);
 
 CREATE POLICY "Seats are viewable by everyone" ON seats
-    FOR SELECT USING (true);
+    FOR SELECT USING (is_visible = 1);
 
 CREATE POLICY "Admins can insert seats" ON seats
     FOR INSERT WITH CHECK (true);
@@ -369,7 +373,8 @@ CREATE TABLE IF NOT EXISTS announcements (
     tag_color VARCHAR(50),  -- 标签颜色: brand-green, white, red, orange
     type VARCHAR(50) DEFAULT 'info', -- info, warning, promotion, emergency, activity
     active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW())
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc', NOW()),
+    is_visible INTEGER DEFAULT 1
 );
 
 -- Enable RLS for announcements
@@ -378,7 +383,7 @@ ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 -- Allow public read access to active announcements
 DROP POLICY IF EXISTS "Public announcements are viewable by everyone" ON announcements;
 CREATE POLICY "Public announcements are viewable by everyone" ON announcements
-    FOR SELECT USING (true);
+    FOR SELECT USING (true AND is_visible = 1);
 
 CREATE POLICY "Admins can insert announcements" ON announcements
     FOR INSERT WITH CHECK (true);
@@ -439,7 +444,8 @@ CREATE TABLE IF NOT EXISTS reviews (
     content TEXT,
     images TEXT[] DEFAULT '{}',
     is_anonymous BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_visible INTEGER DEFAULT 1
 );
 
 -- 索引
@@ -451,7 +457,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_order_unique ON reviews(order_id);
 ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Reviews are viewable by everyone" ON reviews
-    FOR SELECT USING (true);
+    FOR SELECT USING (is_visible = 1);
 
 CREATE POLICY "Users can create own reviews" ON reviews
     FOR INSERT WITH CHECK (true);

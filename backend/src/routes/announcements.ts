@@ -1,15 +1,10 @@
 import express from 'express';
-import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import { supabase } from '../config/supabase.js';
 
 dotenv.config();
 
 const router = express.Router();
-
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Middleware to check if user is admin (Duplicated for now, ideal to move to shared middleware)
 import { authMiddleware } from '../middleware/auth.js';
@@ -46,7 +41,7 @@ const adminMiddleware = async (req: express.Request, res: express.Response, next
 // Also supports fetching ALL announcements (active & inactive) for admin if ?all=true is passed
 router.get('/', async (req, res) => {
     try {
-        const { shop_id, all } = req.query;
+        const { shop_id, all, include_deleted } = req.query;
 
         let query = supabase
             .from('announcements')
@@ -61,6 +56,10 @@ router.get('/', async (req, res) => {
 
         if (shop_id) {
             query = query.eq('shop_id', shop_id);
+        }
+
+        if (include_deleted !== 'true') {
+            query = query.eq('is_visible', 1);
         }
 
         const { data, error } = await query.order('created_at', { ascending: false });
@@ -124,7 +123,7 @@ router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
 
         const { error } = await supabase
             .from('announcements')
-            .delete()
+            .update({ is_visible: 0 })
             .eq('id', id);
 
         if (error) throw error;

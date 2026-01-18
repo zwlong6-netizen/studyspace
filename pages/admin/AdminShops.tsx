@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, MapPin, Star, MoreVertical } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, MapPin, Star, MoreVertical, Eye, EyeOff } from 'lucide-react';
 import { shopsApi, Shop } from '../../src/services/api';
 
 export const AdminShops: React.FC = () => {
@@ -28,7 +28,8 @@ export const AdminShops: React.FC = () => {
 
     const fetchShops = async () => {
         try {
-            const response = await shopsApi.getShops();
+            // Pass all=true to get hidden shops
+            const response = await shopsApi.getShops('true'); // Assuming api.getShops accepts 'all' param
             if (response.success) {
                 setShops(response.shops);
             }
@@ -39,18 +40,22 @@ export const AdminShops: React.FC = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('确定要删除该店铺吗？此操作不可恢复。')) return;
+    const handleToggleVisibility = async (shop: Shop) => {
+        const newStatus = shop.is_visible === 1 ? 0 : 1;
+        const action = newStatus === 1 ? '恢复显示' : '隐藏';
+
+        if (!confirm(`确定要${action}该店铺吗？`)) return;
+
         try {
-            const res = await shopsApi.deleteShop(id);
+            const res = await shopsApi.updateShop(shop.id, { is_visible: newStatus });
             if (res.success) {
-                setShops(shops.filter(s => s.id !== id));
+                setShops(shops.map(s => s.id === shop.id ? res.shop : s));
             } else {
-                alert(res.message || '删除失败');
+                alert(res.message || '操作失败');
             }
         } catch (error: any) {
-            console.error('Delete failed:', error);
-            alert(error.message || '删除失败');
+            console.error('Update visibility failed:', error);
+            alert(error.message || '操作失败');
         }
     };
 
@@ -148,6 +153,7 @@ export const AdminShops: React.FC = () => {
                                 <th className="px-6 py-4 font-semibold">店铺信息</th>
                                 <th className="px-6 py-4 font-semibold">详细地址</th>
                                 <th className="px-6 py-4 font-semibold">价格配置</th>
+                                <th className="px-6 py-4 font-semibold">状态</th>
                                 <th className="px-6 py-4 font-semibold">评分数据</th>
                                 <th className="px-6 py-4 font-semibold text-right">操作</th>
                             </tr>
@@ -200,6 +206,17 @@ export const AdminShops: React.FC = () => {
                                             <div className="font-bold text-gray-900">¥{shop.price}<span className="text-xs text-gray-400 font-normal">/小时</span></div>
                                         </td>
                                         <td className="px-6 py-4">
+                                            {shop.is_visible === 0 ? (
+                                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                    已隐藏
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    正常
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
                                             <div className="flex items-center gap-1.5">
                                                 <Star size={16} className="text-orange-400 fill-orange-400" />
                                                 <span className="font-bold text-gray-900">{shop.rating}</span>
@@ -214,9 +231,14 @@ export const AdminShops: React.FC = () => {
                                                     <Edit2 size={18} />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(shop.id)}
-                                                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="删除">
-                                                    <Trash2 size={18} />
+                                                    onClick={() => handleToggleVisibility(shop)}
+                                                    className={`p-2 rounded-lg transition-colors ${shop.is_visible === 0
+                                                        ? 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                                                        : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
+                                                        }`}
+                                                    title={shop.is_visible === 0 ? "显示" : "隐藏"}
+                                                >
+                                                    {shop.is_visible === 0 ? <EyeOff size={18} /> : <Trash2 size={18} />}
                                                 </button>
                                             </div>
                                         </td>

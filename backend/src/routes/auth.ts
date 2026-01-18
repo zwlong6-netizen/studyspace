@@ -139,6 +139,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
             .from('users')
             .select('*')
             .eq('shop_id', shop_id)
+            .eq('is_visible', 1)
             .or(`username.eq.${username},phone.eq.${username}`);
 
         // 2. 如果没找到，并且没有提供 shop_id (或者提供了 but user not found), check for GLOBAL ADMIN
@@ -183,7 +184,11 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
         }
 
         // 生成 JWT token
-        const token = generateToken({ userId: user.id, username: user.username });
+        const token = generateToken({
+            userId: user.id,
+            username: user.username,
+            role: user.role === 1 ? 'admin' : 'user'
+        });
 
         // 返回用户信息（排除密码）
         const { password_hash, ...userWithoutPassword } = user;
@@ -212,6 +217,7 @@ router.get('/profile', authMiddleware, async (req: Request, res: Response): Prom
             .from('users')
             .select('id, username, phone, avatar, member_level, role, total_hours, consecutive_days, focus_points, balance, created_at')
             .eq('id', userId)
+            .eq('is_visible', 1)
             .single();
 
         if (error || !user) {

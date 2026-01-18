@@ -8,6 +8,7 @@ import { AdminUsers } from './pages/admin/AdminUsers';
 import { AdminAnnouncements } from './pages/admin/AdminAnnouncements';
 import { AdminSeats } from './pages/admin/AdminSeats';
 import { AdminLogin } from './pages/admin/AdminLogin';
+import { AdminReviews } from './pages/admin/AdminReviews';
 import { Home } from './pages/Home';
 import { MapExplore } from './pages/MapExplore';
 import { StoreDetail } from './pages/StoreDetail';
@@ -53,6 +54,7 @@ const App: React.FC = () => {
           <Route path="users" element={<AdminUsers />} />
           <Route path="announcements" element={<AdminAnnouncements />} />
           <Route path="seats" element={<AdminSeats />} />
+          <Route path="reviews" element={<AdminReviews />} />
         </Route>
       </Routes>
     </Router>

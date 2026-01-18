@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Search, Plus, Trash2, Edit2, X, Loader2, Armchair, Check, XCircle } from 'lucide-react';
+import { Search, Plus, Trash2, Edit2, X, Loader2, Armchair, Check, XCircle, Eye, EyeOff } from 'lucide-react';
 import { adminApi } from '../../src/services/api';
 
 interface Seat {
@@ -11,6 +11,7 @@ interface Seat {
     type: string;
     is_active: boolean;
     created_at: string;
+    is_visible: number;
 }
 
 export const AdminSeats: React.FC = () => {
@@ -75,16 +76,21 @@ export const AdminSeats: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('确定要删除该座位吗？此操作不可恢复。')) return;
+    const handleToggleVisibility = async (seat: Seat) => {
+        const newStatus = seat.is_visible === 1 ? 0 : 1;
+        const action = newStatus === 1 ? '恢复显示' : '隐藏';
+
+        if (!confirm(`确定要${action}该座位吗？`)) return;
+
         try {
-            const res = await adminApi.deleteSeat(id);
-            if (res.success) {
-                setSeats(seats.filter(s => s.id !== id));
+            // Reusing updateSeat which calls PUT /api/seats/:id
+            const res = await adminApi.updateSeat(seat.id, { is_visible: newStatus });
+            if (res.success && res.seat) {
+                setSeats(seats.map(s => s.id === seat.id ? res.seat : s));
             }
         } catch (error) {
-            console.error('Delete failed:', error);
-            alert('删除失败');
+            console.error('Update visibility failed:', error);
+            alert('操作失败');
         }
     };
 
@@ -188,6 +194,7 @@ export const AdminSeats: React.FC = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">分区</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">类型</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">显示</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                             </tr>
                         </thead>
@@ -237,6 +244,17 @@ export const AdminSeats: React.FC = () => {
                                                 </span>
                                             )}
                                         </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {seat.is_visible === 0 ? (
+                                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                    已隐藏
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    正常
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
@@ -247,11 +265,14 @@ export const AdminSeats: React.FC = () => {
                                                     <Edit2 size={18} />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(seat.id)}
-                                                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="删除"
+                                                    onClick={() => handleToggleVisibility(seat)}
+                                                    className={`p-2 rounded-lg transition-colors ${seat.is_visible === 0
+                                                        ? 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                                                        : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
+                                                        }`}
+                                                    title={seat.is_visible === 0 ? "显示" : "隐藏"}
                                                 >
-                                                    <Trash2 size={18} />
+                                                    {seat.is_visible === 0 ? <EyeOff size={18} /> : <Trash2 size={18} />}
                                                 </button>
                                             </div>
                                         </td>

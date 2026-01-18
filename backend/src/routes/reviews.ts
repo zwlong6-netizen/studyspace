@@ -94,13 +94,19 @@ router.post('/', authMiddleware, async (req: Request, res: Response): Promise<vo
 router.get('/shop/:shopId', async (req: Request, res: Response): Promise<void> => {
     try {
         const { shopId } = req.params;
-        const { limit = 10, offset = 0 } = req.query;
+        const { limit = 10, offset = 0, include_deleted } = req.query;
 
-        const { data: reviews, error } = await supabase
+        let query = supabase
             .from('reviews')
             .select('*, users(username, avatar)')
             .eq('shop_id', shopId)
-            .order('created_at', { ascending: false })
+            .order('created_at', { ascending: false });
+
+        if (include_deleted !== 'true') {
+            query = query.eq('is_visible', 1);
+        }
+
+        const { data: reviews, error } = await query
             .range(Number(offset), Number(offset) + Number(limit) - 1);
 
         if (error) {
@@ -139,6 +145,7 @@ router.get('/order/:orderId', async (req: Request, res: Response): Promise<void>
             .from('reviews')
             .select('*')
             .eq('order_id', orderId)
+            .eq('is_visible', 1)
             .single();
 
         if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
@@ -165,7 +172,8 @@ router.get('/shop/:shopId/stats', async (req: Request, res: Response): Promise<v
         const { data: reviews, error } = await supabase
             .from('reviews')
             .select('rating')
-            .eq('shop_id', shopId);
+            .eq('shop_id', shopId)
+            .eq('is_visible', 1);
 
         if (error) {
             console.error('Fetch review stats error:', error);
@@ -191,4 +199,77 @@ router.get('/shop/:shopId/stats', async (req: Request, res: Response): Promise<v
     }
 });
 
+/**
+ * DELETE /api/reviews/:reviewId
+ * 删除评价 (仅管理员)
+ */
+router.delete('/:reviewId', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { reviewId } = req.params;
+        const userId = req.user?.userId;
+        const role = req.user?.role;
+
+        // 仅管理员可删除
+        if (role !== 'admin') {
+            res.status(403).json({ success: false, message: '无权执行此操作' });
+            return;
+        }
+
+        const { error } = await supabase
+            .from('reviews')
+            .update({ is_visible: 0 })
+            .eq('id', reviewId);
+
+        if (error) {
+            console.error('Delete review error:', error);
+            res.status(500).json({ success: false, message: '删除失败' });
+            return;
+        }
+
+        res.json({ success: true, message: '评价已删除' });
+    } catch (error) {
+        console.error('Delete review error:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
 export default router;
+/**
+ * PUT /api/reviews/:reviewId
+ * 更新评价 (仅管理员)
+ */
+router.put('/:reviewId', authMiddleware, async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { reviewId } = req.params;
+        const { is_visible } = req.body;
+        const userId = req.user?.userId;
+        const role = req.user?.role;
+
+        // 仅管理员可操作
+        if (role !== 'admin') {
+            res.status(403).json({ success: false, message: '无权执行此操作' });
+            return;
+        }
+
+        const updates: any = {};
+        if (is_visible !== undefined) updates.is_visible = is_visible;
+
+        const { data, error } = await supabase
+            .from('reviews')
+            .update(updates)
+            .eq('id', reviewId)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Update review error:', error);
+            res.status(500).json({ success: false, message: '更新失败' });
+            return;
+        }
+
+        res.json({ success: true, message: '评价更新成功', review: data });
+    } catch (error) {
+        console.error('Update review error:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});

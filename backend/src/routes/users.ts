@@ -1,16 +1,13 @@
 import express from 'express';
-import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
+import { supabase } from '../config/supabase.js';
 import { authMiddleware } from '../middleware/auth.js';
 
 dotenv.config();
 
 const router = express.Router();
 
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Middleware to check if user is admin
 const adminMiddleware = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -54,6 +51,12 @@ router.get('/', authMiddleware, adminMiddleware, async (req, res) => {
             query = query.eq('shop_id', shop_id);
         }
 
+        if (shop_id) {
+            query = query.eq('shop_id', shop_id);
+        }
+
+        // query = query.eq('is_visible', 1);  <-- Admin should see all users
+
         const { data, error } = await query;
 
         if (error) {
@@ -82,6 +85,7 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
             .select('id')
             .eq('shop_id', shop_id)
             .eq('username', username)
+            .eq('is_visible', 1)
             .single();
 
         if (existingUser) {
@@ -121,7 +125,7 @@ router.post('/', authMiddleware, adminMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
-        const { username, phone, role, member_level, balance, password } = req.body;
+        const { username, phone, role, member_level, balance, password, is_visible } = req.body;
 
         const updates: any = {};
         if (username !== undefined) updates.username = username;
@@ -129,6 +133,7 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
         if (role !== undefined) updates.role = role;
         if (member_level !== undefined) updates.member_level = member_level;
         if (balance !== undefined) updates.balance = balance;
+        if (is_visible !== undefined) updates.is_visible = is_visible;
 
         if (password && password.trim() !== '') {
             const salt = await bcrypt.genSalt(10);
@@ -139,6 +144,7 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req, res) => {
             .from('users')
             .update(updates)
             .eq('id', id)
+            // .eq('is_visible', 1)  <-- Allow updating hidden users (restoring)
             .select('id, username, phone, member_level, role, balance, created_at, shop_id')
             .single();
 
@@ -158,7 +164,7 @@ router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
 
         const { error } = await supabase
             .from('users')
-            .delete()
+            .update({ is_visible: 0 })
             .eq('id', id);
 
         if (error) throw error;

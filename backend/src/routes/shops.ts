@@ -37,12 +37,16 @@ const adminMiddleware = async (req: Request, res: Response, next: NextFunction) 
  */
 router.get('/', async (req: Request, res: Response): Promise<void> => {
     try {
-        const { location } = req.query;
+        const { location, all } = req.query;
 
         let query = supabase
             .from('shops')
             .select('*')
             .order('rating', { ascending: false });
+
+        if (all !== 'true') {
+            query = query.eq('is_visible', 1);
+        }
 
         if (location && typeof location === 'string') {
             query = query.ilike('location', `%${location}%`);
@@ -78,6 +82,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
             .from('shops')
             .select('*')
             .eq('id', id)
+            .eq('is_visible', 1)
             .single();
 
         if (error || !shop) {
@@ -108,6 +113,7 @@ router.get('/:id/seats', async (req: Request, res: Response): Promise<void> => {
             .from('seats')
             .select('*')
             .eq('shop_id', id)
+            .eq('is_visible', 1)
             .eq('is_active', true)
             .order('label');
 
@@ -146,6 +152,7 @@ router.get('/:id/zones', async (req: Request, res: Response): Promise<void> => {
             .from('zones')
             .select('*')
             .eq('shop_id', id)
+            .eq('is_visible', 1)
             .order('price');
 
         if (zonesError) {
@@ -158,7 +165,8 @@ router.get('/:id/zones', async (req: Request, res: Response): Promise<void> => {
         const { data: seats, error: seatsError } = await supabase
             .from('seats')
             .select('zone_name, is_active')
-            .eq('shop_id', id);
+            .eq('shop_id', id)
+            .eq('is_visible', 1);
 
         if (seatsError) {
             console.error('Get seats for zones error:', seatsError);
@@ -236,6 +244,7 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req: Request, res: Re
             .from('shops')
             .update(updates)
             .eq('id', id)
+            // .eq('is_visible', 1) <-- Allow updating hidden items
             .select()
             .single();
 
@@ -258,19 +267,13 @@ router.delete('/:id', authMiddleware, adminMiddleware, async (req: Request, res:
 
         const { error } = await supabase
             .from('shops')
-            .delete()
+            .update({ is_visible: 0 })
             .eq('id', id);
 
         if (error) {
-            // Check for foreign key constraint violation
-            if (error.code === '23503') {
-                res.status(400).json({
-                    success: false,
-                    message: '无法删除：该店铺下还有关联的用户、座位或订单，请先删除或转移这些数据'
-                });
-                return;
-            }
-            throw error;
+            console.error('Delete shop error:', error);
+            res.status(500).json({ success: false, message: 'Failed to delete shop' });
+            return;
         }
 
         res.json({ success: true, message: 'Shop deleted successfully' });

@@ -158,6 +158,16 @@ export const AdminLayout: React.FC = () => {
                         <LayoutDashboard size={18} />
                         <span className="font-medium text-[15px]">座位管理</span>
                     </NavLink>
+
+                    <NavLink
+                        to="/admin/reviews"
+                        className={({ isActive }) =>
+                            `flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group ${isActive ? 'bg-brand-green text-white shadow-md shadow-brand-green/20' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`
+                        }
+                    >
+                        <LayoutDashboard size={18} />
+                        <span className="font-medium text-[15px]">评价管理</span>
+                    </NavLink>
                 </nav>
 
                 <div className="p-4 border-t border-gray-100">
@@ -217,7 +227,7 @@ export const AdminLayout: React.FC = () => {
                 {/* Content Area */}
                 <main className="flex-1 overflow-auto bg-gray-50 p-8">
                     <div className="max-w-7xl mx-auto animate-in fade-in duration-500">
-                        <Outlet context={{ currentShopId }} />
+                        <Outlet context={{ currentShopId, activeShop: shops.find(s => s.id === currentShopId) || null }} />
                     </div>
                 </main>
             </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Search, Plus, Trash2, Edit, Image as ImageIcon, X, Loader2 } from 'lucide-react';
-import { shopsApi } from '../../src/services/api';
+import { Search, Plus, Trash2, Edit, Image as ImageIcon, X, Loader2, Eye, EyeOff } from 'lucide-react';
+import { shopsApi, announcementsApi } from '../../src/services/api';
 
 interface Announcement {
     id: string;
@@ -13,6 +13,7 @@ interface Announcement {
     type: string;
     active: boolean;
     shop_id: string;
+    is_visible: number;
 }
 
 interface Shop {
@@ -66,14 +67,9 @@ export const AdminAnnouncements: React.FC = () => {
             }
 
             // Fetch all announcements (admin mode)
-            let url = 'http://localhost:3001/api/announcements?all=true';
-            if (currentShopId) {
-                url += `&shop_id=${currentShopId}`;
-            }
-            const res = await fetch(url, { headers });
-            const data = await res.json();
-            if (data.success) {
-                setAnnouncements(data.announcements);
+            const res = await announcementsApi.getAnnouncements(currentShopId, true);
+            if (res.success) {
+                setAnnouncements(res.announcements);
             }
         } catch (error) {
             console.error('Error loading data:', error);
@@ -110,22 +106,22 @@ export const AdminAnnouncements: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('确定要删除这条公告吗？')) return;
+    const handleToggleVisibility = async (announcement: Announcement) => {
+        const newStatus = announcement.is_visible === 1 ? 0 : 1;
+        const action = newStatus === 1 ? '恢复显示' : '隐藏';
+
+        if (!confirm(`确定要${action}这条公告吗？`)) return;
 
         try {
-            const token = localStorage.getItem('token');
-            const res = await fetch(`http://localhost:3001/api/announcements/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = await res.json();
-            if (data.success) {
-                setAnnouncements(prev => prev.filter(a => a.id !== id));
+            const res = await announcementsApi.updateAnnouncement(announcement.id, { is_visible: newStatus });
+            if (res.success) {
+                setAnnouncements(prev => prev.map(a => a.id === announcement.id ? res.announcement : a));
+            } else {
+                alert('操作失败');
             }
         } catch (error) {
-            console.error('Delete error:', error);
-            alert('删除失败');
+            console.error('Update visibility error:', error);
+            alert('操作失败');
         }
     };
 
@@ -136,34 +132,18 @@ export const AdminAnnouncements: React.FC = () => {
 
             if (editingAnnouncement) {
                 // Update existing
-                const res = await fetch(`http://localhost:3001/api/announcements/${editingAnnouncement.id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(formData)
-                });
-                const data = await res.json();
-                if (data.success) {
+                const res = await announcementsApi.updateAnnouncement(editingAnnouncement.id, formData);
+                if (res.success) {
                     setAnnouncements(announcements.map(a =>
-                        a.id === editingAnnouncement.id ? data.announcement : a
+                        a.id === editingAnnouncement.id ? res.announcement : a
                     ));
                     setIsModalOpen(false);
                 }
             } else {
                 // Create new
-                const res = await fetch('http://localhost:3001/api/announcements', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify(formData)
-                });
-                const data = await res.json();
-                if (data.success) {
-                    setAnnouncements([data.announcement, ...announcements]);
+                const res = await announcementsApi.createAnnouncement(formData);
+                if (res.success) {
+                    setAnnouncements([res.announcement, ...announcements]);
                     setIsModalOpen(false);
                 }
             }
@@ -227,7 +207,8 @@ export const AdminAnnouncements: React.FC = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">图片</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">所属店铺</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">标签</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">发布状态</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">显示状态</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                             </tr>
                         </thead>
@@ -274,6 +255,17 @@ export const AdminAnnouncements: React.FC = () => {
                                                 {item.active ? '已发布' : '未发布'}
                                             </span>
                                         </td>
+                                        <td className="px-6 py-4">
+                                            {item.is_visible === 0 ? (
+                                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                    已隐藏
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    正常
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
@@ -283,10 +275,14 @@ export const AdminAnnouncements: React.FC = () => {
                                                     <Edit size={18} />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(item.id)}
-                                                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    onClick={() => handleToggleVisibility(item)}
+                                                    className={`p-2 rounded-lg transition-colors ${item.is_visible === 0
+                                                        ? 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                                                        : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
+                                                        }`}
+                                                    title={item.is_visible === 0 ? "显示" : "隐藏"}
                                                 >
-                                                    <Trash2 size={18} />
+                                                    {item.is_visible === 0 ? <EyeOff size={18} /> : <Trash2 size={18} />}
                                                 </button>
                                             </div>
                                         </td>

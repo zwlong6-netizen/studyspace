@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Search, Filter, Shield, Edit2, Trash2, Plus, X, Loader2 } from 'lucide-react';
+import { Search, Filter, Shield, Edit2, Trash2, Plus, X, Loader2, Eye, EyeOff } from 'lucide-react';
 import { getMemberLevelName, getMemberLevelColor } from '../../src/utils/memberLevel';
 import { adminApi } from '../../src/services/api';
 
@@ -16,6 +16,7 @@ interface User {
     focus_points: number;
     balance: number;
     created_at: string;
+    is_visible: number;
 }
 
 export const AdminUsers: React.FC = () => {
@@ -92,16 +93,22 @@ export const AdminUsers: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('确定要删除该用户吗？此操作不可恢复。')) return;
+    const handleToggleVisibility = async (user: User) => {
+        const newStatus = user.is_visible === 1 ? 0 : 1;
+        const action = newStatus === 1 ? '恢复显示' : '隐藏';
+
+        if (!confirm(`确定要${action}该用户吗？`)) return;
+
         try {
-            const res = await adminApi.deleteUser(id);
+            // We reuse updateUser which now calls PUT /api/users/:id
+            // The backend PUT endpoint now accepts is_visible updates
+            const res = await adminApi.updateUser(user.id, { is_visible: newStatus });
             if (res.success) {
-                setUsers(users.filter(u => u.id !== id));
+                setUsers(users.map(u => u.id === user.id ? { ...u, is_visible: newStatus } : u));
             }
         } catch (error) {
-            console.error('Delete failed:', error);
-            alert('删除失败');
+            console.error('Update visibility failed:', error);
+            alert('操作失败');
         }
     };
 
@@ -193,6 +200,7 @@ export const AdminUsers: React.FC = () => {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">等级</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">角色</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">账户余额</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">注册时间</th>
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                             </tr>
@@ -243,6 +251,17 @@ export const AdminUsers: React.FC = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             ¥{(user.balance || 0).toFixed(2)}
                                         </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {user.is_visible === 0 ? (
+                                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                                    已隐藏
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                                    正常
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {new Date(user.created_at).toLocaleDateString()}
                                         </td>
@@ -256,11 +275,14 @@ export const AdminUsers: React.FC = () => {
                                                     <Edit2 size={18} />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(user.id)}
-                                                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="删除"
+                                                    onClick={() => handleToggleVisibility(user)}
+                                                    className={`p-2 rounded-lg transition-colors ${user.is_visible === 0
+                                                        ? 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+                                                        : 'text-gray-500 hover:text-red-600 hover:bg-red-50'
+                                                        }`}
+                                                    title={user.is_visible === 0 ? "显示" : "隐藏"}
                                                 >
-                                                    <Trash2 size={18} />
+                                                    {user.is_visible === 0 ? <EyeOff size={18} /> : <Trash2 size={18} />}
                                                 </button>
                                             </div>
                                         </td>

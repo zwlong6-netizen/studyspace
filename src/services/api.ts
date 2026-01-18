@@ -248,15 +248,18 @@ export interface Shop {
     is_24h: boolean;
     latitude?: number;
     longitude?: number;
+    is_visible?: number;
 }
 
 export const shopsApi = {
     /**
      * 获取店铺列表
      */
-    async getShops(location?: string): Promise<{ success: boolean; shops: Shop[] }> {
-        const params = location ? `?location=${encodeURIComponent(location)}` : '';
-        return request(`/shops${params}`);
+    async getShops(all?: string, location?: string): Promise<{ success: boolean; shops: Shop[] }> {
+        const params = new URLSearchParams();
+        if (location) params.append('location', location);
+        if (all) params.append('all', all);
+        return request(`/shops?${params.toString()}`);
     },
 
     /**
@@ -518,7 +521,7 @@ export const adminApi = {
     },
     // Seat management
     getSeats: async (shopId: string): Promise<{ success: boolean; seats: any[] }> => {
-        return request(`/seats?shop_id=${shopId}&all=true`, { useAdminToken: true });
+        return request(`/seats?shop_id=${shopId}&all=true&include_deleted=true`, { useAdminToken: true });
     },
     createSeat: async (data: any): Promise<{ success: boolean; seat?: any; message?: string }> => {
         return request('/seats', { method: 'POST', body: JSON.stringify(data), useAdminToken: true });
@@ -541,14 +544,58 @@ export const announcementsApi = {
             if (contentType && contentType.indexOf("application/json") !== -1) {
                 return await response.json();
             } else {
-                const text = await response.text();
-                // console.error("Received non-JSON response from /announcements:", text);
                 throw new Error("Invalid response format");
             }
         } catch (error) {
             console.error('Error fetching announcements:', error);
             return { success: false, error };
         }
+    },
+
+    /**
+     * 获取所有公告 (Admin)
+     */
+    async getAnnouncements(shopId?: string, includeDeleted = false): Promise<{ success: boolean; announcements: any[] }> {
+        const params = new URLSearchParams();
+        if (shopId) params.append('shop_id', shopId);
+        if (includeDeleted) params.append('include_deleted', 'true');
+        return request(`/announcements?${params.toString()}`, { useAdminToken: true });
+    },
+
+    /**
+     * 创建公告 (Admin)
+     */
+    async createAnnouncement(data: any): Promise<{ success: boolean; announcement: any }> {
+        return request('/announcements', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            useAdminToken: true
+        });
+    },
+
+    /**
+     * 更新公告 (Admin)
+     */
+    async updateAnnouncement(id: string, data: any): Promise<{ success: boolean; announcement: any }> {
+        return request(`/announcements/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            useAdminToken: true
+        });
+    },
+
+    /**
+     * 删除公告 (Admin - Soft Delete if backend handles it, but request is DELETE)
+     * Actually my backend DELETE handles hard delete? 
+     * Wait, I converted DELETE to soft delete in backend `announcements.ts`?
+     * Checking summary: "Convert hard delete to soft delete in announcements.ts."
+     * Yes. So DELETE endpoint performs soft delete (updates is_visible = 0).
+     * But I am implementing a explicit TOGGLE using UPDATE in frontend.
+     * So I'll just expose updateAnnouncement which I can use for toggle.
+     * I'll also expose deleteAnnouncement just in case.
+     */
+    async deleteAnnouncement(id: string): Promise<{ success: boolean; message: string }> {
+        return request(`/announcements/${id}`, { method: 'DELETE', useAdminToken: true });
     }
 };
 
@@ -582,6 +629,7 @@ export interface Review {
     images?: string[];
     is_anonymous: boolean;
     created_at: string;
+    is_visible?: number;
     users?: {
         username: string;
         avatar?: string;
@@ -607,8 +655,8 @@ export const reviewsApi = {
     /**
      * 获取门店评价列表
      */
-    async getShopReviews(shopId: string, limit = 10, offset = 0): Promise<{ success: boolean; reviews: Review[] }> {
-        return request(`/reviews/shop/${shopId}?limit=${limit}&offset=${offset}`);
+    async getShopReviews(shopId: string, limit = 10, offset = 0, include_deleted = false): Promise<{ success: boolean; reviews: Review[] }> {
+        return request(`/reviews/shop/${shopId}?limit=${limit}&offset=${offset}&include_deleted=${include_deleted}`);
     },
 
     /**
@@ -616,6 +664,27 @@ export const reviewsApi = {
      */
     async getOrderReview(orderId: string): Promise<{ success: boolean; review: Review | null }> {
         return request(`/reviews/order/${orderId}`);
+    },
+
+    /**
+     * 删除评价
+     */
+    async deleteReview(reviewId: string): Promise<{ success: boolean; message: string }> {
+        return request(`/reviews/${reviewId}`, {
+            method: 'DELETE',
+            useAdminToken: true
+        });
+    },
+
+    /**
+     * 更新评价 (Admin)
+     */
+    async updateReview(reviewId: string, data: any): Promise<{ success: boolean; message: string; review?: Review }> {
+        return request(`/reviews/${reviewId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            useAdminToken: true
+        });
     },
 
     /**

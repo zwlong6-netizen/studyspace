@@ -38,7 +38,7 @@ const adminMiddleware = async (req: Request, res: Response, next: NextFunction) 
  */
 router.get('/', async (req: Request, res: Response): Promise<void> => {
     try {
-        const { shop_id, zone, all } = req.query;
+        const { shop_id, zone, all, include_deleted } = req.query;
 
         if (!shop_id) {
             res.status(400).json({ success: false, message: '请提供店铺ID' });
@@ -50,6 +50,10 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
             .select('*')
             .eq('shop_id', shop_id as string)
             .order('label');
+
+        if (include_deleted !== 'true') {
+            query = query.eq('is_visible', 1);
+        }
 
         // If not admin requesting all, only show active
         if (all !== 'true') {
@@ -90,6 +94,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
             .from('seats')
             .select('*, shops(*)')
             .eq('id', id)
+            .eq('is_visible', 1)
             .single();
 
         if (error || !seat) {
@@ -129,8 +134,9 @@ router.get('/:id/schedule', async (req: Request, res: Response): Promise<void> =
 
         const { data: schedules, error } = await supabase
             .from('schedules')
-            .select('*')
+            .select('*, seats!inner(is_visible)')
             .eq('seat_id', id)
+            .eq('seats.is_visible', 1)
             .gte('date', startDateStr)
             .lt('date', endDateStr)
             .order('date')
@@ -186,9 +192,10 @@ router.get('/schedules/batch', async (req: Request, res: Response): Promise<void
 
         const { data: schedules, error } = await supabase
             .from('schedules')
-            .select('*')
+            .select('*, seats!inner(is_visible)')
             .in('seat_id', seatIdList)
             .eq('date', targetDate)
+            .eq('seats.is_visible', 1)
             .order('start_hour');
 
         if (error) {
@@ -268,6 +275,7 @@ router.put('/:id', authMiddleware, adminMiddleware, async (req: Request, res: Re
             .from('seats')
             .update(updates)
             .eq('id', id)
+            // .eq('is_visible', 1) <-- Allow updating hidden seats
             .select()
             .single();
 
@@ -290,7 +298,7 @@ router.delete('/:id', authMiddleware, adminMiddleware, async (req: Request, res:
 
         const { error } = await supabase
             .from('seats')
-            .delete()
+            .update({ is_visible: 0 })
             .eq('id', id);
 
         if (error) throw error;
