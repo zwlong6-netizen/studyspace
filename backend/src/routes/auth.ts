@@ -68,7 +68,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
                 username,
                 phone: phone || null,
                 password_hash: passwordHash,
-                member_level: 'normal',
+                member_level: 0,
                 role: 0,
                 shop_id: shop_id,
                 total_hours: 0,
