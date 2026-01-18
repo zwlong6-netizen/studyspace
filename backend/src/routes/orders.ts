@@ -297,4 +297,70 @@ function parseTimeToHour(timeStr: string): number {
     return hours + minutes / 60;
 }
 
+/**
+ * POST /api/orders/sync-status
+ * 同步订单状态 (pending -> active -> completed)
+ * 公开端点，无需认证，用于页面加载时触发
+ */
+router.post('/sync-status', async (req: Request, res: Response): Promise<void> => {
+    try {
+        // Fetch all active/pending orders
+        const { data: orders, error } = await supabase
+            .from('orders')
+            .select('*')
+            .in('status', ['active', 'pending']);
+
+        if (error) {
+            console.error('Sync status: Failed to fetch orders', error);
+            res.status(500).json({ success: false, message: '获取订单失败' });
+            return;
+        }
+
+        if (!orders || orders.length === 0) {
+            res.json({ success: true, updated: 0 });
+            return;
+        }
+
+        const now = new Date();
+        let updatedCount = 0;
+
+        for (const order of orders) {
+            try {
+                const [year, month, day] = order.date.split('-').map(Number);
+                const [startHour, startMinute] = (order.start_time || '00:00').split(':').map(Number);
+                const [endHour, endMinute] = (order.end_time || '00:00').split(':').map(Number);
+
+                const startTime = new Date(year, month - 1, day, startHour, startMinute, 0, 0);
+                const endTime = new Date(year, month - 1, day, endHour, endMinute, 0, 0);
+                const admissionTime = new Date(startTime.getTime() - 10 * 60000);
+
+                let targetStatus = order.status;
+
+                if (now > endTime) {
+                    targetStatus = 'completed';
+                } else if (now >= admissionTime) {
+                    targetStatus = 'active';
+                } else {
+                    targetStatus = 'pending';
+                }
+
+                if (targetStatus !== order.status) {
+                    await supabase
+                        .from('orders')
+                        .update({ status: targetStatus })
+                        .eq('id', order.id);
+                    updatedCount++;
+                }
+            } catch (err) {
+                console.error(`Sync status: Error processing order ${order.id}`, err);
+            }
+        }
+
+        res.json({ success: true, updated: updatedCount });
+    } catch (error) {
+        console.error('Sync status error:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
 export default router;
