@@ -25,8 +25,9 @@ export const OrderList: React.FC = () => {
 
 
       try {
-        const lastShopId = localStorage.getItem('lastShopId');
-        const response = await ordersApi.getOrders(undefined, lastShopId || undefined);
+        // Use activeShopId from sessionStorage (consistent with other pages)
+        const currentShopId = sessionStorage.getItem('activeShopId');
+        const response = await ordersApi.getOrders(undefined, currentShopId || undefined);
         if (response.success) {
           setOrders(response.orders);
         }
