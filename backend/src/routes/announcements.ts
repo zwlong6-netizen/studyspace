@@ -14,11 +14,21 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // GET /api/announcements - Get all active announcements
 router.get('/', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        const { shop_id } = req.query;
+
+        let query = supabase
             .from('announcements')
             .select('*')
-            .eq('active', true)
-            .order('created_at', { ascending: false });
+            .eq('active', true);
+
+        // If shop_id is provided, filter by it
+        // Note: For now we do strict filtering. If global announcements are needed later,
+        // we could change this to .or(`shop_id.eq.${shop_id},shop_id.is.null`)
+        if (shop_id) {
+            query = query.eq('shop_id', shop_id);
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
 
         if (error) {
             console.error('Error fetching announcements:', error);

@@ -43,24 +43,34 @@ export const Home: React.FC = () => {
 
   // Fetch announcements
   useEffect(() => {
-    announcementsApi.getActive().then(res => {
-      if (res.success && res.announcements) {
-        // Sort by specific tag priority
-        const priority: Record<string, number> = {
-          '新店开业': 1,
-          '紧急通知': 2,
-          '限时活动': 3,
-          '会员福利': 4
-        };
-        const sorted = [...res.announcements].sort((a, b) => {
-          const pA = priority[a.tag || ''] || 99;
-          const pB = priority[b.tag || ''] || 99;
-          return pA - pB;
-        });
-        setAnnouncements(sorted);
-      }
-    });
-  }, []);
+    // Only fetch if we have a shop ID (or fetch generic if needed, but requirements say unique to shop)
+    // If currentShop is null, we might want to wait or fetch nothing.
+    // However, the original code fetched immediately.
+    // Let's rely on currentShop being set.
+    if (currentShop?.id) {
+      announcementsApi.getActive(currentShop.id).then(res => {
+        if (res.success && res.announcements) {
+          // Sort by specific tag priority
+          const priority: Record<string, number> = {
+            '新店开业': 1,
+            '紧急通知': 2,
+            '限时活动': 3,
+            '会员福利': 4
+          };
+          const sorted = [...res.announcements].sort((a, b) => {
+            const pA = priority[a.tag || ''] || 99;
+            const pB = priority[b.tag || ''] || 99;
+            return pA - pB;
+          });
+          setAnnouncements(sorted);
+        }
+      });
+    } else {
+      // Option: clear announcements or fetch default?
+      // Let's wait for shop to be loaded.
+      setAnnouncements([]);
+    }
+  }, [currentShop?.id]);
 
   // 当从 state 传入店铺时更新 currentShop (处理组件复用而非重新挂载的情况)
   useEffect(() => {
@@ -81,7 +91,11 @@ export const Home: React.FC = () => {
         if (!shop) {
           const shopsResponse = await shopsApi.getShops();
           if (shopsResponse.success && shopsResponse.shops.length > 0) {
-            shop = shopsResponse.shops[0];
+            // 尝试恢复上次选择的店铺
+            const lastShopId = localStorage.getItem('lastShopId');
+            const lastShop = lastShopId ? shopsResponse.shops.find(s => s.id === lastShopId) : null;
+
+            shop = lastShop || shopsResponse.shops[0];
             setCurrentShop(shop);
           } else {
             setCurrentShop(null);
@@ -124,6 +138,13 @@ export const Home: React.FC = () => {
     }
   }, []);
 
+  // 记住最后选择的店铺
+  useEffect(() => {
+    if (currentShop?.id) {
+      localStorage.setItem('lastShopId', currentShop.id);
+    }
+  }, [currentShop?.id]);
+
   // 过滤房间
   const filteredRooms = rooms.filter(room =>
     room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -143,15 +164,7 @@ export const Home: React.FC = () => {
             <span className="font-medium text-lg text-text-primary">{displayShopName}</span>
             <ChevronDown className="text-text-secondary w-4 h-4" />
           </div>
-          <div className="flex items-center gap-3">
-            <div onClick={() => navigate('/orders')} className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 relative">
-              <BookOpen className="w-5 h-5 text-gray-600" />
-            </div>
-            <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-100 relative">
-              <Bell className="w-5 h-5 text-gray-600" />
-              <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-            </div>
-          </div>
+
         </div>
 
         {/* Search Bar */}

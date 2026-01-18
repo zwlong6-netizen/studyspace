@@ -411,15 +411,16 @@ export const adminApi = {
 
 
 export const announcementsApi = {
-    getActive: async () => {
+    getActive: async (shopId?: string) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/announcements`);
+            const params = shopId ? `?shop_id=${encodeURIComponent(shopId)}` : '';
+            const response = await fetch(`${API_BASE_URL}/announcements${params}`);
             const contentType = response.headers.get("content-type");
             if (contentType && contentType.indexOf("application/json") !== -1) {
                 return await response.json();
             } else {
                 const text = await response.text();
-                console.error("Received non-JSON response from /announcements:", text);
+                // console.error("Received non-JSON response from /announcements:", text);
                 throw new Error("Invalid response format");
             }
         } catch (error) {
