@@ -3,6 +3,9 @@ import { useOutletContext } from 'react-router-dom';
 import { Search, Star, Trash2, Loader2, User, MessageSquare, Store, Eye, EyeOff } from 'lucide-react';
 import { reviewsApi, Review, shopsApi, Shop } from '../../src/services/api';
 
+import { toast } from 'react-hot-toast';
+import { confirmToast } from '../../src/utils/confirmToast';
+
 const RatingStars: React.FC<{ rating: number }> = ({ rating }) => (
     <div className="flex text-yellow-400">
         {[1, 2, 3, 4, 5].map((i) => (
@@ -18,7 +21,6 @@ export const AdminReviews: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterRating, setFilterRating] = useState<number | null>(null);
     const [stats, setStats] = useState<{ total: number; avgRating: number } | null>(null);
-    const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchReviews = async () => {
@@ -38,6 +40,7 @@ export const AdminReviews: React.FC = () => {
                 if (statsRes.success) setStats(statsRes.stats);
             } catch (e) {
                 console.log('Failed to fetch reviews:', e);
+                toast.error('加载评价失败');
             } finally {
                 setLoading(false);
             }
@@ -181,19 +184,25 @@ export const AdminReviews: React.FC = () => {
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         <button
-                                            onClick={async () => {
-                                                // Toggle logic here directly or use setDeleteConfirm for hiding
-                                                if (review.is_visible === 0) {
-                                                    // Restore
-                                                    if (!confirm('确定要恢复显示该评价吗？')) return;
-                                                    const res = await reviewsApi.updateReview(review.id, { is_visible: 1 });
-                                                    if (res.success) {
-                                                        setReviews(prev => prev.map(r => r.id === review.id ? { ...r, is_visible: 1 } : r));
+                                            onClick={() => {
+                                                const newStatus = review.is_visible === 0 ? 1 : 0;
+                                                const action = newStatus === 1 ? '恢复显示' : '隐藏';
+                                                const extraMsg = newStatus === 0 ? '隐藏后评价将不在前台显示。' : '';
+
+                                                confirmToast(`确定要${action}该评价吗？${extraMsg}`, async () => {
+                                                    try {
+                                                        const res = await reviewsApi.updateReview(review.id, { is_visible: newStatus });
+                                                        if (res.success) {
+                                                            setReviews(prev => prev.map(r => r.id === review.id ? { ...r, is_visible: newStatus } : r));
+                                                            toast.success(`评价已${action}`);
+                                                        } else {
+                                                            toast.error((res as any).message || '操作失败');
+                                                        }
+                                                    } catch (e) {
+                                                        console.error('Update review visibility failed:', e);
+                                                        toast.error('操作失败');
                                                     }
-                                                } else {
-                                                    // Hide (trigger modal or direct)
-                                                    setDeleteConfirm(review.id);
-                                                }
+                                                });
                                             }}
                                             className={`p-2 rounded-lg transition-colors ${review.is_visible === 0
                                                 ? 'text-gray-400 hover:text-green-600 hover:bg-green-50'
@@ -218,42 +227,6 @@ export const AdminReviews: React.FC = () => {
                 </table>
             </div>
 
-            {/* Remove hard delete modal, no longer needed */}
-            {deleteConfirm && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-                    <div className="bg-white rounded-xl w-full max-w-sm p-6 shadow-xl">
-                        <h3 className="text-lg font-bold text-gray-900 mb-2">确认隐藏评价？</h3>
-                        <p className="text-gray-500 text-sm mb-6">隐藏后评价将不在前台显示。</p>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setDeleteConfirm(null)}
-                                className="flex-1 h-10 rounded-lg border border-gray-200 text-gray-600 font-medium text-sm hover:bg-gray-50"
-                            >
-                                取消
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    try {
-                                        const res = await reviewsApi.updateReview(deleteConfirm, { is_visible: 0 }); // Hide
-                                        if (res.success) {
-                                            setReviews(prev => prev.map(r => r.id === deleteConfirm ? { ...r, is_visible: 0 } : r));
-                                        } else {
-                                            alert(res.message || '操作失败');
-                                        }
-                                    } catch (e) {
-                                        alert('操作失败');
-                                    } finally {
-                                        setDeleteConfirm(null);
-                                    }
-                                }}
-                                className="flex-1 h-10 rounded-lg bg-red-500 text-white font-bold text-sm hover:bg-red-600"
-                            >
-                                确认隐藏
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

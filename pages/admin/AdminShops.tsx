@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, MapPin, Star, MoreVertical, Eye, EyeOff } from 'lucide-react';
 import { shopsApi, Shop } from '../../src/services/api';
 
+import { toast } from 'react-hot-toast';
+import { confirmToast } from '../../src/utils/confirmToast';
+
 export const AdminShops: React.FC = () => {
     const [shops, setShops] = useState<Shop[]>([]);
     const [loading, setLoading] = useState(true);
@@ -32,31 +35,39 @@ export const AdminShops: React.FC = () => {
             const response = await shopsApi.getShops('true'); // Assuming api.getShops accepts 'all' param
             if (response.success) {
                 setShops(response.shops);
+            } else {
+                toast.error('获取店铺列表失败');
             }
         } catch (error) {
             console.error('Failed to fetch shops:', error);
+            toast.error('网络错误');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleToggleVisibility = async (shop: Shop) => {
+    // ...
+
+    // ...
+
+    const handleToggleVisibility = (shop: Shop) => {
         const newStatus = shop.is_visible === 1 ? 0 : 1;
         const action = newStatus === 1 ? '恢复显示' : '隐藏';
 
-        if (!confirm(`确定要${action}该店铺吗？`)) return;
-
-        try {
-            const res = await shopsApi.updateShop(shop.id, { is_visible: newStatus });
-            if (res.success) {
-                setShops(shops.map(s => s.id === shop.id ? res.shop : s));
-            } else {
-                alert(res.message || '操作失败');
+        confirmToast(`确定要${action}该店铺吗？`, async () => {
+            try {
+                const res = await shopsApi.updateShop(shop.id, { is_visible: newStatus });
+                if (res.success) {
+                    setShops(prev => prev.map(s => s.id === shop.id ? res.shop : s));
+                    toast.success(`店铺已${action}`);
+                } else {
+                    toast.error((res as any).message || '操作失败');
+                }
+            } catch (error: any) {
+                console.error('Update visibility failed:', error);
+                toast.error(error.message || '操作失败');
             }
-        } catch (error: any) {
-            console.error('Update visibility failed:', error);
-            alert(error.message || '操作失败');
-        }
+        });
     };
 
     const handleEdit = (shop: Shop) => {
@@ -92,17 +103,23 @@ export const AdminShops: React.FC = () => {
                 if (res.success) {
                     setShops(shops.map(s => s.id === editingShop.id ? res.shop : s));
                     setIsModalOpen(false);
+                    toast.success('更新成功');
+                } else {
+                    toast.error((res as any).message || '更新失败');
                 }
             } else {
                 const res = await shopsApi.createShop(formData);
                 if (res.success) {
                     setShops([res.shop, ...shops]);
                     setIsModalOpen(false);
+                    toast.success('创建成功');
+                } else {
+                    toast.error((res as any).message || '创建失败');
                 }
             }
         } catch (error) {
             console.error('Submit failed:', error);
-            alert('保存失败');
+            toast.error('保存失败');
         }
     };
 

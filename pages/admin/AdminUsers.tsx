@@ -19,6 +19,9 @@ interface User {
     is_visible: number;
 }
 
+import { toast } from 'react-hot-toast';
+import { confirmToast } from '../../src/utils/confirmToast';
+
 export const AdminUsers: React.FC = () => {
     const { currentShopId } = useOutletContext<{ currentShopId: string }>();
     const [users, setUsers] = useState<User[]>([]);
@@ -57,9 +60,12 @@ export const AdminUsers: React.FC = () => {
             const data = await response.json();
             if (data.success) {
                 setUsers(data.users);
+            } else {
+                toast.error('获取用户列表失败');
             }
         } catch (error) {
             console.error('Error fetching users:', error);
+            toast.error('网络错误');
         } finally {
             setLoading(false);
         }
@@ -93,23 +99,24 @@ export const AdminUsers: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleToggleVisibility = async (user: User) => {
+    const handleToggleVisibility = (user: User) => {
         const newStatus = user.is_visible === 1 ? 0 : 1;
         const action = newStatus === 1 ? '恢复显示' : '隐藏';
 
-        if (!confirm(`确定要${action}该用户吗？`)) return;
-
-        try {
-            // We reuse updateUser which now calls PUT /api/users/:id
-            // The backend PUT endpoint now accepts is_visible updates
-            const res = await adminApi.updateUser(user.id, { is_visible: newStatus });
-            if (res.success) {
-                setUsers(users.map(u => u.id === user.id ? { ...u, is_visible: newStatus } : u));
+        confirmToast(`确定要${action}该用户吗？`, async () => {
+            try {
+                const res = await adminApi.updateUser(user.id, { is_visible: newStatus });
+                if (res.success) {
+                    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_visible: newStatus } : u));
+                    toast.success(`用户已${action}`);
+                } else {
+                    toast.error('操作失败');
+                }
+            } catch (error) {
+                console.error('Update visibility failed:', error);
+                toast.error('操作失败');
             }
-        } catch (error) {
-            console.error('Update visibility failed:', error);
-            alert('操作失败');
-        }
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -120,17 +127,23 @@ export const AdminUsers: React.FC = () => {
                 if (res.success) {
                     setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...res.user } : u));
                     setIsModalOpen(false);
+                    toast.success('更新成功');
+                } else {
+                    toast.error(res.message || '更新失败');
                 }
             } else {
                 const res = await adminApi.createUser(formData);
                 if (res.success) {
                     setUsers([res.user, ...users]);
                     setIsModalOpen(false);
+                    toast.success('创建成功');
+                } else {
+                    toast.error(res.message || '创建失败');
                 }
             }
         } catch (error) {
             console.error('Submit failed:', error);
-            alert('保存失败');
+            toast.error('保存失败');
         }
     };
 

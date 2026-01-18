@@ -58,6 +58,9 @@ const OrderStatusBadge: React.FC<{ status: string }> = ({ status }) => {
 };
 
 
+import { toast } from 'react-hot-toast';
+import { confirmToast } from '../../src/utils/confirmToast';
+
 export const AdminOrders: React.FC = () => {
     const { currentShopId } = useOutletContext<{ currentShopId: string }>();
     const [searchTerm, setSearchTerm] = useState('');
@@ -81,9 +84,12 @@ export const AdminOrders: React.FC = () => {
             const res = await adminApi.getAllOrders(shopId);
             if (res.success && res.orders) {
                 setOrders(res.orders);
+            } else {
+                toast.error('加载订单失败');
             }
         } catch (error) {
             console.error("Failed to load orders", error);
+            toast.error('网络错误');
         } finally {
             setLoading(false);
         }
@@ -94,22 +100,28 @@ export const AdminOrders: React.FC = () => {
         setIsDetailOpen(true);
     };
 
-    const handleCancelOrder = async (orderId: string) => {
-        if (!confirm('确定要取消这个订单吗？')) return;
-        try {
-            const res = await ordersApi.cancelOrder(orderId);
-            if (res.success) {
-                setOrders(orders.map(o =>
-                    o.id === orderId ? { ...o, status: 'cancelled' } : o
-                ));
-                if (selectedOrder?.id === orderId) {
-                    setSelectedOrder({ ...selectedOrder, status: 'cancelled' });
+    // ...
+
+    // ...
+
+    const handleCancelOrder = (orderId: string) => {
+        confirmToast('确定要取消这个订单吗？', async () => {
+            try {
+                const res = await ordersApi.cancelOrder(orderId);
+                if (res.success) {
+                    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelled' } : o));
+                    if (selectedOrder?.id === orderId) {
+                        setSelectedOrder((prev: any) => ({ ...prev, status: 'cancelled' }));
+                    }
+                    toast.success('订单已取消');
+                } else {
+                    toast.error(res.message || '取消订单失败');
                 }
+            } catch (error) {
+                console.error('Cancel order failed:', error);
+                toast.error('取消订单失败');
             }
-        } catch (error) {
-            console.error('Cancel order failed:', error);
-            alert('取消订单失败');
-        }
+        });
     };
 
     const filteredOrders = orders.map(order => ({

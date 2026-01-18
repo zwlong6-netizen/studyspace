@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { Search, Plus, Trash2, Edit, Image as ImageIcon, X, Loader2, Eye, EyeOff } from 'lucide-react';
 import { shopsApi, announcementsApi } from '../../src/services/api';
+import { toast } from 'react-hot-toast';
+import { confirmToast } from '../../src/utils/confirmToast';
 
 interface Announcement {
     id: string;
@@ -55,7 +57,6 @@ export const AdminAnnouncements: React.FC = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem('token');
-            const headers = { 'Authorization': `Bearer ${token}` };
 
             // Fetch shops for dropdown
             const shopRes = await shopsApi.getShops();
@@ -73,6 +74,7 @@ export const AdminAnnouncements: React.FC = () => {
             }
         } catch (error) {
             console.error('Error loading data:', error);
+            toast.error('数据加载失败');
         } finally {
             setLoading(false);
         }
@@ -106,30 +108,29 @@ export const AdminAnnouncements: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleToggleVisibility = async (announcement: Announcement) => {
+    const handleToggleVisibility = (announcement: Announcement) => {
         const newStatus = announcement.is_visible === 1 ? 0 : 1;
         const action = newStatus === 1 ? '恢复显示' : '隐藏';
 
-        if (!confirm(`确定要${action}这条公告吗？`)) return;
-
-        try {
-            const res = await announcementsApi.updateAnnouncement(announcement.id, { is_visible: newStatus });
-            if (res.success) {
-                setAnnouncements(prev => prev.map(a => a.id === announcement.id ? res.announcement : a));
-            } else {
-                alert('操作失败');
+        confirmToast(`确定要${action}这条公告吗？`, async () => {
+            try {
+                const res = await announcementsApi.updateAnnouncement(announcement.id, { is_visible: newStatus });
+                if (res.success) {
+                    setAnnouncements(prev => prev.map(a => a.id === announcement.id ? res.announcement : a));
+                    toast.success(`公告已${action}`);
+                } else {
+                    toast.error('操作失败');
+                }
+            } catch (error) {
+                console.error('Update visibility error:', error);
+                toast.error('操作失败');
             }
-        } catch (error) {
-            console.error('Update visibility error:', error);
-            alert('操作失败');
-        }
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('token');
-
             if (editingAnnouncement) {
                 // Update existing
                 const res = await announcementsApi.updateAnnouncement(editingAnnouncement.id, formData);
@@ -138,6 +139,9 @@ export const AdminAnnouncements: React.FC = () => {
                         a.id === editingAnnouncement.id ? res.announcement : a
                     ));
                     setIsModalOpen(false);
+                    toast.success('更新成功');
+                } else {
+                    toast.error('更新失败');
                 }
             } else {
                 // Create new
@@ -145,6 +149,9 @@ export const AdminAnnouncements: React.FC = () => {
                 if (res.success) {
                     setAnnouncements([res.announcement, ...announcements]);
                     setIsModalOpen(false);
+                    toast.success('发布成功');
+                } else {
+                    toast.error('发布失败');
                 }
             }
 
@@ -160,7 +167,7 @@ export const AdminAnnouncements: React.FC = () => {
             });
         } catch (error) {
             console.error('Submit error:', error);
-            alert('保存失败');
+            toast.error('保存失败');
         }
     };
 

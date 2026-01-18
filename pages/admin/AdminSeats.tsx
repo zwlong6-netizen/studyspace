@@ -14,6 +14,9 @@ interface Seat {
     is_visible: number;
 }
 
+import { toast } from 'react-hot-toast';
+import { confirmToast } from '../../src/utils/confirmToast';
+
 export const AdminSeats: React.FC = () => {
     const { currentShopId } = useOutletContext<{ currentShopId: string }>();
     const [seats, setSeats] = useState<Seat[]>([]);
@@ -44,9 +47,12 @@ export const AdminSeats: React.FC = () => {
             const res = await adminApi.getSeats(shopId);
             if (res.success) {
                 setSeats(res.seats);
+            } else {
+                toast.error('获取座位失败');
             }
         } catch (error) {
             console.error('Error fetching seats:', error);
+            toast.error('网络错误');
         } finally {
             setLoading(false);
         }
@@ -76,22 +82,24 @@ export const AdminSeats: React.FC = () => {
         setIsModalOpen(true);
     };
 
-    const handleToggleVisibility = async (seat: Seat) => {
+    const handleToggleVisibility = (seat: Seat) => {
         const newStatus = seat.is_visible === 1 ? 0 : 1;
         const action = newStatus === 1 ? '恢复显示' : '隐藏';
 
-        if (!confirm(`确定要${action}该座位吗？`)) return;
-
-        try {
-            // Reusing updateSeat which calls PUT /api/seats/:id
-            const res = await adminApi.updateSeat(seat.id, { is_visible: newStatus });
-            if (res.success && res.seat) {
-                setSeats(seats.map(s => s.id === seat.id ? res.seat : s));
+        confirmToast(`确定要${action}该座位吗？`, async () => {
+            try {
+                const res = await adminApi.updateSeat(seat.id, { is_visible: newStatus });
+                if (res.success && res.seat) {
+                    setSeats(prev => prev.map(s => s.id === seat.id ? res.seat : s));
+                    toast.success(`座位已${action}`);
+                } else {
+                    toast.error(res.message || '操作失败');
+                }
+            } catch (error) {
+                console.error('Update visibility failed:', error);
+                toast.error('操作失败');
             }
-        } catch (error) {
-            console.error('Update visibility failed:', error);
-            alert('操作失败');
-        }
+        });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -102,17 +110,23 @@ export const AdminSeats: React.FC = () => {
                 if (res.success && res.seat) {
                     setSeats(seats.map(s => s.id === editingSeat.id ? res.seat : s));
                     setIsModalOpen(false);
+                    toast.success('更新成功');
+                } else {
+                    toast.error(res.message || '更新失败');
                 }
             } else {
                 const res = await adminApi.createSeat(formData);
                 if (res.success && res.seat) {
                     setSeats([res.seat, ...seats]);
                     setIsModalOpen(false);
+                    toast.success('创建成功');
+                } else {
+                    toast.error(res.message || '创建失败');
                 }
             }
         } catch (error) {
             console.error('Submit failed:', error);
-            alert('保存失败');
+            toast.error('保存失败');
         }
     };
 

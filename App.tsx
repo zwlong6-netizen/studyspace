@@ -25,9 +25,12 @@ import { TicketDetail } from './pages/TicketDetail';
 import { Focus } from './pages/Focus';
 import { ReviewList } from './pages/ReviewList';
 
+import { Toaster } from 'react-hot-toast';
+
 const App: React.FC = () => {
   return (
     <Router>
+      <Toaster position="top-center" reverseOrder={false} />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/map" element={<MapExplore />} />
