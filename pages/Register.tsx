@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, User, Smartphone, EyeOff, Eye, Lock, Loader2 } from 'lucide-react';
 import { authApi } from '../src/services/api';
@@ -14,6 +14,16 @@ export const Register: React.FC = () => {
     const [agreed, setAgreed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [shopId, setShopId] = useState('');
+
+    useEffect(() => {
+        const sid = sessionStorage.getItem('activeShopId');
+        if (!sid) {
+            navigate('/');
+            return;
+        }
+        setShopId(sid);
+    }, [navigate]);
 
     const handleSubmit = async () => {
         setError('');
@@ -38,7 +48,7 @@ export const Register: React.FC = () => {
 
         setLoading(true);
         try {
-            const response = await authApi.register(username, password, phone || undefined);
+            const response = await authApi.register(username, password, phone || undefined, shopId);
             if (response.success) {
                 navigate('/');
             } else {

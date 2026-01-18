@@ -86,19 +86,28 @@ export const Home: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // 如果没有当前店铺，则获取第一个店铺
+        // 如果没有当前店铺，则检查 sessionStorage
         let shop = currentShop;
         if (!shop) {
-          const shopsResponse = await shopsApi.getShops();
-          if (shopsResponse.success && shopsResponse.shops.length > 0) {
-            // 尝试恢复上次选择的店铺
-            const lastShopId = localStorage.getItem('lastShopId');
-            const lastShop = lastShopId ? shopsResponse.shops.find(s => s.id === lastShopId) : null;
-
-            shop = lastShop || shopsResponse.shops[0];
-            setCurrentShop(shop);
+          const savedShopId = sessionStorage.getItem('activeShopId');
+          if (savedShopId) {
+            try {
+              const res = await shopsApi.getShopDetail(savedShopId);
+              if (res.success) {
+                shop = res.shop;
+                setCurrentShop(shop);
+              } else {
+                navigate('/map');
+                return;
+              }
+            } catch (e) {
+              navigate('/map');
+              return;
+            }
           } else {
-            setCurrentShop(null);
+            // No saved shop, force selection
+            navigate('/map');
+            return;
           }
         }
 
@@ -119,13 +128,40 @@ export const Home: React.FC = () => {
         }
       } catch (error) {
         console.error('Failed to fetch data:', error);
+        if (!currentShop) {
+          navigate('/map');
+        }
       } finally {
-        setLoading(false);
+        setLoading(false); // Stop loading regardless
       }
     };
 
     fetchData();
-  }, [currentShop]);
+  }, [currentShop, navigate]);
+
+  // 记住最后选择的店铺 (Use sessionStorage)
+  useEffect(() => {
+    if (currentShop?.id) {
+      sessionStorage.setItem('activeShopId', currentShop.id);
+      // Also sync to localStorage if we want "Remember me" behavior? 
+      // User asked for "Pop up every time re-enter". So strictly sessionStorage is safer for that request.
+      // But clearing localStorage might be needed if previous code set it?
+      localStorage.removeItem('lastShopId');
+      localStorage.removeItem('activeShopId');
+
+      // STRICT SHOP ISOLATION CHECK
+      // If user is logged in, check if they belong to this shop.
+      const user = authApi.getLocalUser();
+      if (user && user.shop_id && user.shop_id !== currentShop.id) {
+        // Mismatch found: logged in user belongs to a different shop.
+        // Force logout.
+        console.log(`Shop switch detected (User: ${user.shop_id} vs Current: ${currentShop.id}). Logging out.`);
+        authApi.logout();
+        // Prompt login for the new shop
+        setShowLoginModal(true);
+      }
+    }
+  }, [currentShop?.id]);
 
   // 检查登录状态
   useEffect(() => {
@@ -138,13 +174,6 @@ export const Home: React.FC = () => {
     }
   }, []);
 
-  // 记住最后选择的店铺
-  useEffect(() => {
-    if (currentShop?.id) {
-      localStorage.setItem('lastShopId', currentShop.id);
-    }
-  }, [currentShop?.id]);
-
   // 过滤房间
   const filteredRooms = rooms.filter(room =>
     room.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -152,7 +181,7 @@ export const Home: React.FC = () => {
   );
 
   // 获取显示的店铺名称
-  const displayShopName = currentShop?.name || '加载中...';
+  const displayShopName = currentShop?.name || '请选择门店';
 
   return (
     <div className="flex flex-col min-h-screen pb-24 max-w-md mx-auto bg-background-light">

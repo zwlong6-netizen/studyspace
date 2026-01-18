@@ -59,8 +59,10 @@ export interface User {
     id: string;
     username: string;
     phone?: string;
+    shop_id?: string;
     avatar: string;
-    member_level: string;
+    member_level: number;
+    role?: number;
     total_hours: number;
     consecutive_days: number;
     focus_points: number;
@@ -79,10 +81,10 @@ export const authApi = {
     /**
      * 用户注册
      */
-    async register(username: string, password: string, phone?: string): Promise<AuthResponse> {
+    async register(username: string, password: string, phone?: string, shopId?: string): Promise<AuthResponse> {
         const data = await request<AuthResponse>('/auth/register', {
             method: 'POST',
-            body: JSON.stringify({ username, password, phone }),
+            body: JSON.stringify({ username, password, phone, shop_id: shopId }),
         });
 
         if (data.token) {
@@ -99,10 +101,10 @@ export const authApi = {
     /**
      * 用户登录
      */
-    async login(username: string, password: string): Promise<AuthResponse> {
+    async login(username: string, password: string, shopId?: string): Promise<AuthResponse> {
         const data = await request<AuthResponse>('/auth/login', {
             method: 'POST',
-            body: JSON.stringify({ username, password }),
+            body: JSON.stringify({ username, password, shop_id: shopId }),
         });
 
         if (data.token) {
@@ -393,10 +395,11 @@ export interface Announcement {
 }
 
 export const adminApi = {
-    getAllOrders: async () => {
+    getAllOrders: async (shopId?: string) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(`${API_BASE_URL}/orders?all=true`, {
+            const query = shopId ? `?all=true&shop_id=${shopId}` : '?all=true';
+            const response = await fetch(`${API_BASE_URL}/orders${query}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }

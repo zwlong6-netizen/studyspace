@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, EyeOff, Eye, Check, Loader2 } from 'lucide-react';
-import { authApi } from '../src/services/api';
+import { authApi, shopsApi } from '../src/services/api';
 
 export const Login: React.FC = () => {
     const navigate = useNavigate();
@@ -10,6 +10,24 @@ export const Login: React.FC = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [shopName, setShopName] = useState('');
+    const [shopId, setShopId] = useState('');
+
+    useEffect(() => {
+        // Init: Check global shop context from SessionStorage (favors re-selection on new session)
+        const currentId = sessionStorage.getItem('activeShopId');
+        if (!currentId) {
+            // If no shop selected, go back home to pick one
+            navigate('/');
+            return;
+        }
+        setShopId(currentId);
+
+        // Fetch shop name for display
+        shopsApi.getShopDetail(currentId).then(res => {
+            if (res.success) setShopName(res.shop.name);
+        });
+    }, [navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -22,8 +40,16 @@ export const Login: React.FC = () => {
 
         setLoading(true);
         try {
-            const response = await authApi.login(username, password);
+            const response = await authApi.login(username, password, shopId);
             if (response.success) {
+                if (response.user && response.user.role !== 0) {
+                    setError('管理员账号请登录后台管理系统');
+                    // Optional: clear any token stored by api.login if it auto-stored
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('isLoggedIn');
+                    localStorage.removeItem('user');
+                    return;
+                }
                 navigate('/');
             } else {
                 setError(response.message || '登录失败');
@@ -42,9 +68,11 @@ export const Login: React.FC = () => {
                 <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-white"></div>
             </div>
             <div className="flex-1 flex flex-col px-8 pt-4 pb-12 z-20">
-                <div className="mb-10 text-center sm:text-left">
+                <div className="mb-8 text-center sm:text-left">
                     <h1 className="text-3xl font-bold tracking-tight mb-2 text-gray-900">账号密码登录</h1>
-                    <p className="text-gray-500 text-sm">连接周边优质学习空间，开启专注时光</p>
+                    <p className="text-gray-500 text-sm">
+                        {shopName ? `当前店铺：${shopName}` : '连接周边优质学习空间'}
+                    </p>
                 </div>
 
                 {error && (

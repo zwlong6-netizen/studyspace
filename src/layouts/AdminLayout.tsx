@@ -1,13 +1,87 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Store, ShoppingBag, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, Store, ShoppingBag, LogOut, User, ChevronDown } from 'lucide-react';
+import { shopsApi, Shop } from '../services/api';
 
 export const AdminLayout: React.FC = () => {
     const navigate = useNavigate();
+    const [shops, setShops] = useState<Shop[]>([]);
+    const [currentShopId, setCurrentShopId] = useState<string>('');
+    const [isRestricted, setIsRestricted] = useState(false);
+
+    const fetchShops = async (userShopId?: string) => {
+        try {
+            const res = await shopsApi.getShops();
+            if (res.success && res.shops.length > 0) {
+                if (userShopId) {
+                    // Filter shops to only the user's shop
+                    const userShop = res.shops.find(s => s.id === userShopId);
+                    if (userShop) {
+                        setShops([userShop]);
+                        setCurrentShopId(userShop.id);
+                        setIsRestricted(true);
+                        return; // Done
+                    }
+                    // Fallback if shop not found?
+                }
+
+                setShops(res.shops);
+                const storedShopId = localStorage.getItem('adminLastShopId');
+                const wudaokouId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+                // Only restore from storage if not restricted (though logic above handles restricted case)
+                if (storedShopId && res.shops.some(s => s.id === storedShopId)) {
+                    setCurrentShopId(storedShopId);
+                } else if (res.shops.some(s => s.id === wudaokouId)) {
+                    setCurrentShopId(wudaokouId);
+                } else {
+                    setCurrentShopId(res.shops[0].id);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch shops');
+        }
+    };
+
+    const handleShopChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newShopId = e.target.value;
+        setCurrentShopId(newShopId);
+        localStorage.setItem('adminLastShopId', newShopId);
+    };
+
+    useEffect(() => {
+        const checkAuth = () => {
+            const token = localStorage.getItem('token');
+            const userStr = localStorage.getItem('user');
+
+            if (!token || !userStr) {
+                navigate('/admin/login');
+                return;
+            }
+
+            try {
+                const user = JSON.parse(userStr);
+                if (user.role !== 1) {
+                    navigate('/admin/login');
+                    return;
+                }
+
+                // Fetch shops passing user.shop_id if it exists
+                fetchShops(user.shop_id);
+
+            } catch (e) {
+                navigate('/admin/login');
+            }
+        };
+
+        checkAuth();
+    }, [navigate]);
 
     const handleLogout = () => {
-        // In a real app, clear auth tokens here
-        navigate('/login');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('isLoggedIn');
+        navigate('/admin/login');
     };
 
     return (
@@ -53,6 +127,26 @@ export const AdminLayout: React.FC = () => {
                         <ShoppingBag size={18} />
                         <span className="font-medium text-[15px]">订单管理</span>
                     </NavLink>
+
+                    <NavLink
+                        to="/admin/users"
+                        className={({ isActive }) =>
+                            `flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group ${isActive ? 'bg-brand-green text-white shadow-md shadow-brand-green/20' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`
+                        }
+                    >
+                        <User size={18} />
+                        <span className="font-medium text-[15px]">用户管理</span>
+                    </NavLink>
+
+                    <NavLink
+                        to="/admin/announcements"
+                        className={({ isActive }) =>
+                            `flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 group ${isActive ? 'bg-brand-green text-white shadow-md shadow-brand-green/20' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`
+                        }
+                    >
+                        <LayoutDashboard size={18} />
+                        <span className="font-medium text-[15px]">公告管理</span>
+                    </NavLink>
                 </nav>
 
                 <div className="p-4 border-t border-gray-100">
@@ -79,7 +173,31 @@ export const AdminLayout: React.FC = () => {
             <div className="flex-1 ml-64 flex flex-col min-w-0 overflow-hidden">
                 {/* Header */}
                 <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-8 sticky top-0 z-10 shadow-sm">
-                    <h2 className="text-xl font-bold text-gray-800">管理控制台</h2>
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-xl font-bold text-gray-800">管理控制台</h2>
+                        <div className="h-6 w-[1px] bg-gray-200 mx-2"></div>
+                        <div className="relative">
+                            {isRestricted ? (
+                                <div className="flex items-center gap-2 px-3 py-1.5 text-sm font-bold text-gray-800 bg-gray-50 border border-gray-200 rounded-lg">
+                                    <Store size={16} className="text-[#3E6950]" />
+                                    {shops.find(s => s.id === currentShopId)?.name || '未知门店'}
+                                </div>
+                            ) : (
+                                <>
+                                    <select
+                                        value={currentShopId}
+                                        onChange={handleShopChange}
+                                        className="appearance-none bg-gray-50 border border-gray-200 rounded-lg py-1.5 pl-3 pr-8 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#3E6950]/20 focus:border-[#3E6950] cursor-pointer"
+                                    >
+                                        {shops.map(shop => (
+                                            <option key={shop.id} value={shop.id}>{shop.name}</option>
+                                        ))}
+                                    </select>
+                                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none w-4 h-4" />
+                                </>
+                            )}
+                        </div>
+                    </div>
                     <div className="flex items-center gap-4">
                         <span className="text-sm text-gray-500">今天是 {new Date().toLocaleDateString()}</span>
                     </div>
@@ -88,7 +206,7 @@ export const AdminLayout: React.FC = () => {
                 {/* Content Area */}
                 <main className="flex-1 overflow-auto bg-gray-50 p-8">
                     <div className="max-w-7xl mx-auto animate-in fade-in duration-500">
-                        <Outlet />
+                        <Outlet context={{ currentShopId }} />
                     </div>
                 </main>
             </div>

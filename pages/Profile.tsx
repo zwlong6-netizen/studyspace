@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, Edit2, Medal, Clock, Flame, Brain, Wallet, Ticket, BarChart4, Settings, ChevronRight, Share2, LogOut, Loader2 } from 'lucide-react';
 import { BottomNav } from '../components/BottomNav';
 import { authApi, User } from '../src/services/api';
+import { getMemberLevelName, getMemberLevelColor } from '../src/utils/memberLevel';
 
 export const Profile: React.FC = () => {
     const navigate = useNavigate();
@@ -39,26 +40,6 @@ export const Profile: React.FC = () => {
         navigate('/login');
     };
 
-    const getMemberLevelLabel = (level: string): string => {
-        const labels: Record<string, string> = {
-            'normal': '普通会员',
-            'silver': '白银会员',
-            'gold': '黄金会员',
-            'platinum': '铂金会员'
-        };
-        return labels[level] || '普通会员';
-    };
-
-    const getMemberLevelColor = (level: string): string => {
-        const colors: Record<string, string> = {
-            'normal': 'from-gray-50 to-gray-100 border-gray-200 text-gray-600',
-            'silver': 'from-gray-50 to-slate-100 border-slate-200 text-slate-600',
-            'gold': 'from-yellow-50 to-amber-50 border-yellow-200 text-yellow-700',
-            'platinum': 'from-purple-50 to-indigo-50 border-purple-200 text-purple-700'
-        };
-        return colors[level] || colors['normal'];
-    };
-
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-background-light">
@@ -71,7 +52,7 @@ export const Profile: React.FC = () => {
     const displayUser = user || {
         username: 'Alex Chen',
         avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAduKN1Wg2-1UPBiruSzBpyKAyB783gEY_UcNHF8wVF1C0VUW_gEgGDXMJ4kJ-dltSsYQ3UYAyfdiLHR1_OETYsc0X7ppQueEi1UqGML_S8kn5Mix0dJGDGooSN7NnoO8Sjk5hl4DNEJP2TngB-Rnqoh8u2rrrYfcJ-IkhoKdaELlGYHgm6trb5mcpL-kKm4oNTIIS3c4GyJcD-VPDCERArZoGkc5w2-OdErE_4pHiYUACFV4TR62WTBoeY1LeMW4Svcg_1_N1rLsg',
-        member_level: 'gold',
+        member_level: 2, // Gold
         total_hours: 32.5,
         consecutive_days: 12,
         focus_points: 850,
@@ -112,7 +93,7 @@ export const Profile: React.FC = () => {
                         <h3 className="text-black text-xl font-bold leading-tight mb-1">{displayUser.username}</h3>
                         <div className={`inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r ${getMemberLevelColor(displayUser.member_level)} border rounded-full`}>
                             <Medal size={16} />
-                            <span className="text-xs font-semibold tracking-wide">{getMemberLevelLabel(displayUser.member_level)}</span>
+                            <span className="text-xs font-semibold tracking-wide">{getMemberLevelName(displayUser.member_level)}</span>
                         </div>
                     </div>
                 </div>

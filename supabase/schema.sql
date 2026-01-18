@@ -11,11 +11,13 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- =====================================================
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    username TEXT NOT NULL UNIQUE,
-    phone TEXT UNIQUE,
+    shop_id UUID REFERENCES shops(id),
+    username TEXT NOT NULL,
+    phone TEXT,
     password_hash TEXT NOT NULL,
     avatar TEXT DEFAULT 'https://lh3.googleusercontent.com/aida-public/AB6AXuAduKN1Wg2-1UPBiruSzBpyKAyB783gEY_UcNHF8wVF1C0VUW_gEgGDXMJ4kJ-dltSsYQ3UYAyfdiLHR1_OETYsc0X7ppQueEi1UqGML_S8kn5Mix0dJGDGooSN7NnoO8Sjk5hl4DNEJP2TngB-Rnqoh8u2rrrYfcJ-IkhoKdaELlGYHgm6trb5mcpL-kKm4oNTIIS3c4GyJcD-VPDCERArZoGkc5w2-OdErE_4pHiYUACFV4TR62WTBoeY1LeMW4Svcg_1_N1rLsg',
-    member_level TEXT DEFAULT 'normal' CHECK (member_level IN ('normal', 'silver', 'gold', 'platinum')),
+    member_level INTEGER DEFAULT 0 CHECK (member_level BETWEEN 0 AND 4),
+    role INTEGER DEFAULT 0,
     total_hours DECIMAL(10, 2) DEFAULT 0,
     consecutive_days INTEGER DEFAULT 0,
     focus_points INTEGER DEFAULT 0,
@@ -372,6 +374,24 @@ INSERT INTO announcements (shop_id, title, content, image_url, tag, tag_color, t
 INSERT INTO announcements (shop_id, title, content, image_url, tag, tag_color, type, active) VALUES
 ('c3d4e5f6-a7b8-9012-cdef-345678901234', '店铺维护通知', '为了提供更好的服务，本店将于下周一凌晨进行系统升级，期间无法预约。', 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80', '紧急通知', '#ef4444', 'emergency', true);
 
+-- 4. Admin User
+INSERT INTO users (username, password_hash, member_level, role, balance)
+VALUES (
+    'admin',
+    '$2a$10$uDf/cg/2FMcfSrTXEJPknuu98KZt2SU1Kw0zXSIEni/6Azrtwo3my',
+    3,
+    1,
+    99999
+) ON CONFLICT (username) DO NOTHING;
+
 -- =====================================================
 -- 完成
 -- =====================================================
+
+-- =====================================================
+-- 1.1 用户表唯一索引 (User Unique Constraints)
+-- =====================================================
+-- 复合唯一索引：同一门店下的用户名和手机号必须唯一
+-- 允许 shop_id 为 NULL (超级管理员)，但需注意 NULL 的唯一性处理 (Standard logic applies)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_shop_username ON users(shop_id, username);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_shop_phone ON users(shop_id, phone);

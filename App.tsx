@@ -4,6 +4,9 @@ import { AdminLayout } from './src/layouts/AdminLayout';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminShops } from './pages/admin/AdminShops';
 import { AdminOrders } from './pages/admin/AdminOrders';
+import { AdminUsers } from './pages/admin/AdminUsers';
+import { AdminAnnouncements } from './pages/admin/AdminAnnouncements';
+import { AdminLogin } from './pages/admin/AdminLogin';
 import { Home } from './pages/Home';
 import { MapExplore } from './pages/MapExplore';
 import { StoreDetail } from './pages/StoreDetail';
@@ -37,10 +40,13 @@ const App: React.FC = () => {
         <Route path="/register" element={<Register />} />
 
         {/* Admin Routes - Desktop Only */}
+        <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="shops" element={<AdminShops />} />
           <Route path="orders" element={<AdminOrders />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="announcements" element={<AdminAnnouncements />} />
         </Route>
       </Routes>
     </Router>

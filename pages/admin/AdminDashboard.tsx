@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Users, ShoppingBag, CreditCard, Store, TrendingUp, ArrowUpRight } from 'lucide-react';
 import { shopsApi, adminApi } from '../../src/services/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 
 const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; trend?: string; color: string; trendUp?: boolean }> = ({ title, value, icon, trend, color, trendUp = true }) => (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between hover:shadow-md transition-shadow relative overflow-hidden group">
@@ -24,6 +24,7 @@ const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode; 
 
 export const AdminDashboard: React.FC = () => {
     const navigate = useNavigate();
+    const { currentShopId } = useOutletContext<{ currentShopId: string }>();
     const [shopCount, setShopCount] = useState(0);
     const [orders, setOrders] = useState<any[]>([]);
     const [stats, setStats] = useState({
@@ -37,66 +38,73 @@ export const AdminDashboard: React.FC = () => {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                // Fetch Shops
+                // Fetch Shops (Global count or filtered? Maybe just keep global for context or count 1 if filtered)
+                // If shop selected, maybe show 1? Or just keep total shops in system?
+                // For now, let's keep total shops in system as it's "Active Shops" in system.
+                // But user requested functions based on shop.
+                // If I am managing Shop A, I don't care about total active shops in system usually.
+                // But let's leave shopCount global for now unless asked.
                 const shopsRes = await shopsApi.getShops();
                 if (shopsRes.success) setShopCount(shopsRes.shops.length);
 
-                // Fetch Orders
-                const ordersRes = await adminApi.getAllOrders();
-                if (ordersRes.success && ordersRes.orders) {
-                    const orders = ordersRes.orders;
-                    setOrders(orders);
+                // Fetch Orders (Filtered by Shop)
+                if (currentShopId) {
+                    const ordersRes = await adminApi.getAllOrders(currentShopId);
+                    if (ordersRes.success && ordersRes.orders) {
+                        const orders = ordersRes.orders;
+                        setOrders(orders);
 
-                    // --- Calculate Stats Trend ---
-                    const now = new Date();
-                    const startOfThisWeek = new Date(now);
-                    startOfThisWeek.setDate(now.getDate() - now.getDay()); // Sunday
-                    startOfThisWeek.setHours(0, 0, 0, 0);
+                        // --- Calculate Stats Trend ---
+                        const now = new Date();
+                        const startOfThisWeek = new Date(now);
+                        startOfThisWeek.setDate(now.getDate() - now.getDay()); // Sunday
+                        startOfThisWeek.setHours(0, 0, 0, 0);
 
-                    const startOfLastWeek = new Date(startOfThisWeek);
-                    startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+                        const startOfLastWeek = new Date(startOfThisWeek);
+                        startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
 
-                    const endOfLastWeek = new Date(startOfThisWeek);
+                        const endOfLastWeek = new Date(startOfThisWeek);
 
-                    let thisWeekRevenue = 0;
-                    let lastWeekRevenue = 0;
-                    let thisWeekOrders = 0;
-                    let lastWeekOrders = 0;
+                        let thisWeekRevenue = 0;
+                        let lastWeekRevenue = 0;
+                        let thisWeekOrders = 0;
+                        let lastWeekOrders = 0;
 
-                    const totalRevenue = orders.reduce((sum: number, order: any) => {
-                        const amount = Number(order.final_price || order.original_price || 0);
-                        const date = new Date(order.created_at);
+                        const totalRevenue = orders.reduce((sum: number, order: any) => {
+                            const amount = Number(order.final_price || order.original_price || 0);
+                            const date = new Date(order.created_at);
 
-                        if (date >= startOfThisWeek) {
-                            thisWeekRevenue += amount;
-                            thisWeekOrders++;
-                        } else if (date >= startOfLastWeek && date < endOfLastWeek) {
-                            lastWeekRevenue += amount;
-                            lastWeekOrders++;
-                        }
+                            if (date >= startOfThisWeek) {
+                                thisWeekRevenue += amount;
+                                thisWeekOrders++;
+                            } else if (date >= startOfLastWeek && date < endOfLastWeek) {
+                                lastWeekRevenue += amount;
+                                lastWeekOrders++;
+                            }
 
-                        return sum + amount;
-                    }, 0);
+                            return sum + amount;
+                        }, 0);
 
-                    // Helper for trend %
-                    const getTrend = (current: number, prev: number) => {
-                        if (prev === 0) return current > 0 ? 100 : 0;
-                        return ((current - prev) / prev) * 100;
-                    };
+                        // Helper for trend %
+                        const getTrend = (current: number, prev: number) => {
+                            if (prev === 0) return current > 0 ? 100 : 0;
+                            return ((current - prev) / prev) * 100;
+                        };
 
-                    const revenueTrend = getTrend(thisWeekRevenue, lastWeekRevenue);
-                    const orderTrend = getTrend(thisWeekOrders, lastWeekOrders);
+                        const revenueTrend = getTrend(thisWeekRevenue, lastWeekRevenue);
+                        const orderTrend = getTrend(thisWeekOrders, lastWeekOrders);
 
-                    const uniqueUsers = new Set(orders.map((o: any) => o.user_id)).size;
+                        const uniqueUsers = new Set(orders.map((o: any) => o.user_id)).size;
 
-                    setStats({
-                        totalRevenue,
-                        totalOrders: orders.length,
-                        uniqueUsers: Math.max(uniqueUsers, 0),
-                        // Add calculated trends to stats object (need to update state type or just use separate stats)
-                        revenueTrend,
-                        orderTrend
-                    });
+                        setStats({
+                            totalRevenue,
+                            totalOrders: orders.length,
+                            uniqueUsers: Math.max(uniqueUsers, 0),
+                            // Add calculated trends to stats object (need to update state type or just use separate stats)
+                            revenueTrend,
+                            orderTrend
+                        });
+                    }
                 }
             } catch (err) {
                 console.error("Failed to fetch dashboard data", err);
@@ -104,7 +112,7 @@ export const AdminDashboard: React.FC = () => {
         };
 
         fetchDashboardData();
-    }, []);
+    }, [currentShopId]);
 
     // Get recent 5 orders
     const recentOrders = orders.slice(0, 5);
