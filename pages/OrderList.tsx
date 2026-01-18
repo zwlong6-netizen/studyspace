@@ -25,7 +25,8 @@ export const OrderList: React.FC = () => {
 
 
       try {
-        const response = await ordersApi.getOrders();
+        const lastShopId = localStorage.getItem('lastShopId');
+        const response = await ordersApi.getOrders(undefined, lastShopId || undefined);
         if (response.success) {
           setOrders(response.orders);
         }
@@ -159,9 +160,7 @@ export const OrderList: React.FC = () => {
                       <div>
                         <div className="flex justify-between items-start">
                           <h3 className="text-primary text-lg font-bold leading-tight mb-1">
-                            {order.shops?.name || '自习室'}
-                            {order.seats?.zone_name ? ` - ${order.seats.zone_name}` : ''}
-                            {' - '}
+                            {order.seats?.zone_name ? `${order.seats.zone_name} - ` : ''}
                             {order.seats?.label || '座位'}
                           </h3>
                           {displayStatus !== 'active' && (

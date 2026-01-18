@@ -84,7 +84,7 @@ export const Profile: React.FC = () => {
                 <div className="flex items-center px-4 py-3 justify-between">
                     <div className="w-10"></div>
                     <h2 className="text-primary text-lg font-bold leading-tight flex-1 text-center">个人中心</h2>
-                    <button className="flex size-10 items-center justify-center rounded-full hover:bg-black/5 transition-colors relative">
+                    <button onClick={() => navigate('/notifications')} className="flex size-10 items-center justify-center rounded-full hover:bg-black/5 transition-colors relative">
                         <Bell size={24} className="text-primary fill-current" />
                         <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
                     </button>

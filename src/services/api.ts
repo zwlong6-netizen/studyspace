@@ -354,9 +354,12 @@ export const ordersApi = {
     /**
      * 获取用户订单列表
      */
-    async getOrders(status?: 'active' | 'completed' | 'cancelled'): Promise<{ success: boolean; orders: Order[] }> {
-        const params = status ? `?status=${status}` : '';
-        return request(`/orders${params}`);
+    async getOrders(status?: 'active' | 'completed' | 'cancelled', shopId?: string): Promise<{ success: boolean; orders: Order[] }> {
+        const params = new URLSearchParams();
+        if (status) params.append('status', status);
+        if (shopId) params.append('shop_id', shopId);
+
+        return request(`/orders?${params.toString()}`);
     },
 
     /**

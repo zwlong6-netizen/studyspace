@@ -134,7 +134,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response): Promise<vo
 router.get('/', authMiddleware, async (req: Request, res: Response): Promise<void> => {
     try {
         const userId = req.user?.userId;
-        const { status, all } = req.query;
+        const { status, all, shop_id } = req.query;
 
         let query = supabase
             .from('orders')
@@ -155,6 +155,10 @@ router.get('/', authMiddleware, async (req: Request, res: Response): Promise<voi
 
         if (status && typeof status === 'string') {
             query = query.eq('status', status);
+        }
+
+        if (shop_id && typeof shop_id === 'string') {
+            query = query.eq('shop_id', shop_id);
         }
 
         const { data: orders, error } = await query;

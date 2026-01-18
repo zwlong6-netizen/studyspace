@@ -12,6 +12,8 @@ import { OrderConfirmation } from './pages/OrderConfirmation';
 import { Profile } from './pages/Profile';
 import { StatsReport } from './pages/StatsReport';
 import { OrderList } from './pages/OrderList';
+import { Notifications } from './pages/Notifications';
+import { ZoneList } from './pages/ZoneList';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { TicketDetail } from './pages/TicketDetail';
@@ -26,6 +28,8 @@ const App: React.FC = () => {
         <Route path="/select-seat" element={<SeatSelection />} />
         <Route path="/confirm-order" element={<OrderConfirmation />} />
         <Route path="/orders" element={<OrderList />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/zones" element={<ZoneList />} />
         <Route path="/ticket/:id" element={<TicketDetail />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/stats" element={<StatsReport />} />
