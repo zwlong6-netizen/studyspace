@@ -470,6 +470,13 @@ export const ordersApi = {
             method: 'PATCH',
             body: JSON.stringify({ status: 'cancelled' }),
         });
+    },
+
+    /**
+     * 同步订单状态 (页面加载时调用)
+     */
+    async syncStatus(): Promise<{ success: boolean; updated: number }> {
+        return request('/orders/sync-status', { method: 'POST' });
     }
 };
 

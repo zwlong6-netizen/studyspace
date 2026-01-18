@@ -37,8 +37,10 @@ export const OrderList: React.FC = () => {
         return;
       }
 
-
       try {
+        // 先同步订单状态 (触发后端状态更新)
+        await ordersApi.syncStatus().catch(() => { });
+
         // Use activeShopId from sessionStorage (consistent with other pages)
         const currentShopId = sessionStorage.getItem('activeShopId');
         const response = await ordersApi.getOrders(undefined, currentShopId || undefined);
