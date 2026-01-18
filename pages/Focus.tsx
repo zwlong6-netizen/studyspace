@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Play, Pause, RotateCcw, Timer, Hourglass } from 'lucide-react';
+import { ChevronLeft, Play, Pause, RotateCcw, Timer, Hourglass, Check, X } from 'lucide-react';
 
 type TimerMode = 'stopwatch' | 'countdown';
 
@@ -322,22 +322,30 @@ export const Focus: React.FC = () => {
                 </div>
             </div>
 
-            {/* Completion Modal */}
             {isComplete && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fade-in">
-                    <div className="flex flex-col gap-6 p-8 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl">
-                        <button
-                            onClick={handleRestart}
-                            className="w-48 py-4 rounded-xl bg-white text-brand-green text-xl font-bold hover:scale-105 transition-transform"
-                        >
-                            重新开始
-                        </button>
-                        <button
-                            onClick={handleStop}
-                            className="w-48 py-4 rounded-xl bg-white/20 text-white text-xl font-medium hover:bg-white/30 transition-colors"
-                        >
-                            停止
-                        </button>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fade-in p-4">
+                    <div className="w-full max-w-xs flex flex-col items-center gap-8 p-8 rounded-[2rem] bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl animate-scale-in">
+                        {/* Success Icon */}
+                        <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-lg shadow-white/10 mb-2">
+                            <Check className="w-10 h-10 text-brand-green stroke-[3]" />
+                        </div>
+
+                        <div className="flex flex-col gap-4 w-full">
+                            <button
+                                onClick={handleRestart}
+                                className="w-full py-4 rounded-2xl bg-white text-brand-green text-lg font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2"
+                            >
+                                <RotateCcw className="w-5 h-5" />
+                                重新开始
+                            </button>
+                            <button
+                                onClick={handleStop}
+                                className="w-full py-4 rounded-2xl bg-white/10 border border-white/10 text-white text-lg font-medium hover:bg-white/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                            >
+                                <X className="w-5 h-5" />
+                                停止
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

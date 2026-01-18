@@ -1,77 +1,96 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>StudySpace</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap"
-      rel="stylesheet"
-    />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              primary: "#1A1A1A",
-              "brand-green": "#2D6A4F",
-              "forest-green": "#116611",
-              "background-light": "#f7f7f7",
-              "background-dark": "#191919",
-              "surface-light": "#ffffff",
-              "surface-dark": "#1c2e1c",
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>StudySpace</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap"
+    rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#1A1A1A",
+            "brand-green": "#2D6A4F",
+            "forest-green": "#116611",
+            "background-light": "#f7f7f7",
+            "background-dark": "#191919",
+            "surface-light": "#ffffff",
+            "surface-dark": "#1c2e1c",
+          },
+          fontFamily: {
+            sans: ["Noto Sans SC", "Lexend", "sans-serif"],
+          },
+          boxShadow: {
+            soft: "0 4px 20px -2px rgba(46, 125, 50, 0.08)",
+          },
+          keyframes: {
+            "fade-in": {
+              "0%": { opacity: "0" },
+              "100%": { opacity: "1" },
             },
-            fontFamily: {
-              sans: ["Noto Sans SC", "Lexend", "sans-serif"],
-            },
-            boxShadow: {
-              soft: "0 4px 20px -2px rgba(46, 125, 50, 0.08)",
+            "scale-in": {
+              "0%": { opacity: "0", transform: "scale(0.95)" },
+              "100%": { opacity: "1", transform: "scale(1)" },
             },
           },
+          animation: {
+            "fade-in": "fade-in 0.2s ease-out",
+            "scale-in": "scale-in 0.3s ease-out cubic-bezier(0.16, 1, 0.3, 1)",
+          },
         },
-      };
-    </script>
-    <style>
-      body {
-        -webkit-font-smoothing: antialiased;
-        background-color: #f7f7f7;
-      }
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      /* Range Slider Customization */
-      input[type=range] {
-        -webkit-appearance: none; 
-        background: transparent; 
-      }
-      input[type=range]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        height: 24px;
-        width: 24px;
-        border-radius: 50%;
-        background: #ffffff;
-        border: 2px solid #2D6A4F;
-        cursor: pointer;
-        margin-top: -10px; 
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      }
-      input[type=range]::-webkit-slider-runnable-track {
-        width: 100%;
-        height: 4px;
-        cursor: pointer;
-        background: #e5e7eb;
-        border-radius: 2px;
-      }
-    </style>
+      },
+    };
+  </script>
+  <style>
+    body {
+      -webkit-font-smoothing: antialiased;
+      background-color: #f7f7f7;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    /* Range Slider Customization */
+    input[type=range] {
+      -webkit-appearance: none;
+      background: transparent;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 24px;
+      width: 24px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 2px solid #2D6A4F;
+      cursor: pointer;
+      margin-top: -10px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 4px;
+      cursor: pointer;
+      background: #e5e7eb;
+      border-radius: 2px;
+    }
+  </style>
   <script type="importmap">
 {
   "imports": {
@@ -84,10 +103,12 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
+  <link rel="stylesheet" href="/index.css">
 </head>
-  <body>
-    <div id="root"></div>
+
+<body>
+  <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>
