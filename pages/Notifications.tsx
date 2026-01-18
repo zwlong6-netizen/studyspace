@@ -14,9 +14,11 @@ export const Notifications: React.FC = () => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                // Fetch Announcements
-                const lastShopId = localStorage.getItem('lastShopId');
-                const annRes = await announcementsApi.getActive(lastShopId || undefined);
+                // Use activeShopId from sessionStorage (consistent with other pages)
+                const currentShopId = sessionStorage.getItem('activeShopId');
+
+                // Fetch Announcements for current shop
+                const annRes = await announcementsApi.getActive(currentShopId || undefined);
                 if (annRes.success && annRes.announcements) {
                     const sorted = [...annRes.announcements].sort((a, b) =>
                         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -26,7 +28,7 @@ export const Notifications: React.FC = () => {
 
                 // Fetch Orders for System Notifications
                 if (localStorage.getItem('token')) {
-                    const orderRes = await ordersApi.getOrders(undefined, lastShopId || undefined);
+                    const orderRes = await ordersApi.getOrders(undefined, currentShopId || undefined);
                     if (orderRes.success && orderRes.orders) {
                         setOrders(orderRes.orders);
                     }
