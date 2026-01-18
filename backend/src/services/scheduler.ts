@@ -29,34 +29,28 @@ const checkExpiredOrders = async () => {
             return;
         }
 
-        const now = new Date();
+        // 使用 UTC 时间戳进行计算，避免本地时区问题
+        const nowUtc = Date.now();
         const updates: PromiseLike<any>[] = [];
         let expiredCount = 0;
 
         // 2. Check and sync statuses
         for (const order of activeOrders) {
             try {
-                // Parse date (YYYY-MM-DD) manually to avoid UTC conversion issues
                 const [year, month, day] = order.date.split('-').map(Number);
-
-                // Parse times
                 const [startHour, startMinute] = (order.start_time || '00:00').split(':').map(Number);
                 const [endHour, endMinute] = (order.end_time || '00:00').split(':').map(Number);
 
-                // Start Time (Local Construction)
-                const startTime = new Date(year, month - 1, day, startHour, startMinute, 0, 0);
-
-                // End Time (Local Construction)
-                const endTime = new Date(year, month - 1, day, endHour, endMinute, 0, 0);
-
-                // Admission is 10 mins before start
-                const admissionTime = new Date(startTime.getTime() - 10 * 60000);
+                // 构建 UTC 时间戳 (订单时间是北京时间 UTC+8，转换为 UTC)
+                const startTimeUtc = Date.UTC(year, month - 1, day, startHour - 8, startMinute, 0, 0);
+                const endTimeUtc = Date.UTC(year, month - 1, day, endHour - 8, endMinute, 0, 0);
+                const admissionTimeUtc = startTimeUtc - 10 * 60000; // 开始前10分钟
 
                 let targetStatus = order.status;
 
-                if (now > endTime) {
+                if (nowUtc > endTimeUtc) {
                     targetStatus = 'completed';
-                } else if (now >= admissionTime) {
+                } else if (nowUtc >= admissionTimeUtc) {
                     targetStatus = 'active';
                 } else {
                     targetStatus = 'pending';
@@ -71,7 +65,7 @@ const checkExpiredOrders = async () => {
                             .eq('id', order.id)
                             .then()
                     );
-                    expiredCount++; // Counting all updates
+                    expiredCount++;
                     console.log(`Scheduler: Syncing Order ${order.id}: ${order.status} -> ${targetStatus}`);
                 }
             } catch (err) {

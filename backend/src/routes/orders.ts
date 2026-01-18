@@ -321,7 +321,11 @@ router.post('/sync-status', async (req: Request, res: Response): Promise<void> =
             return;
         }
 
-        const now = new Date();
+        // 使用北京时间 (UTC+8) 进行计算，避免服务器时区差异
+        const nowUtc = Date.now();
+        const chinaOffset = 8 * 60 * 60 * 1000; // UTC+8
+        const nowChina = new Date(nowUtc + chinaOffset);
+
         let updatedCount = 0;
 
         for (const order of orders) {
@@ -330,21 +334,24 @@ router.post('/sync-status', async (req: Request, res: Response): Promise<void> =
                 const [startHour, startMinute] = (order.start_time || '00:00').split(':').map(Number);
                 const [endHour, endMinute] = (order.end_time || '00:00').split(':').map(Number);
 
-                const startTime = new Date(year, month - 1, day, startHour, startMinute, 0, 0);
-                const endTime = new Date(year, month - 1, day, endHour, endMinute, 0, 0);
-                const admissionTime = new Date(startTime.getTime() - 10 * 60000);
+                // 构建中国时区的时间戳 (以 UTC 表示的中国时间)
+                // 使用 Date.UTC 避免本地时区干扰
+                const startTimeUtc = Date.UTC(year, month - 1, day, startHour - 8, startMinute, 0, 0);
+                const endTimeUtc = Date.UTC(year, month - 1, day, endHour - 8, endMinute, 0, 0);
+                const admissionTimeUtc = startTimeUtc - 10 * 60000; // 开始前10分钟
 
                 let targetStatus = order.status;
 
-                if (now > endTime) {
+                if (nowUtc > endTimeUtc) {
                     targetStatus = 'completed';
-                } else if (now >= admissionTime) {
+                } else if (nowUtc >= admissionTimeUtc) {
                     targetStatus = 'active';
                 } else {
                     targetStatus = 'pending';
                 }
 
                 if (targetStatus !== order.status) {
+                    console.log(`Sync: Order ${order.id.slice(0, 8)} ${order.status} -> ${targetStatus} (now: ${nowChina.toISOString()})`);
                     await supabase
                         .from('orders')
                         .update({ status: targetStatus })
