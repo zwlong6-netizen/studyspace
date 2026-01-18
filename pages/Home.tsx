@@ -313,7 +313,7 @@ export const Home: React.FC = () => {
       <div className="px-4 mt-8 flex-1">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-primary">可选房间</h2>
-          <button onClick={() => navigate('/zones')} className="text-sm text-gray-500 flex items-center hover:text-brand-green">
+          <button onClick={() => navigate('/zones', { state: { shop: currentShop } })} className="text-sm text-gray-500 flex items-center hover:text-brand-green">
             全部
             <ChevronDown className="w-4 h-4 -rotate-90" />
           </button>

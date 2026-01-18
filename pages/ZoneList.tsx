@@ -13,7 +13,8 @@ export const ZoneList: React.FC = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const shopId = localStorage.getItem('lastShopId');
+                // Use activeShopId from sessionStorage (consistent with other pages)
+                const shopId = sessionStorage.getItem('activeShopId');
                 if (!shopId) {
                     navigate('/');
                     return;
@@ -91,41 +92,55 @@ export const ZoneList: React.FC = () => {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-4">
-                        {filteredZones.map((zone) => (
-                            <div
-                                key={zone.id}
-                                onClick={() => navigate('/select-seat', { state: { zoneId: zone.id, zoneName: zone.name } })}
-                                className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 active:scale-[0.98] transition-all cursor-pointer"
-                            >
-                                <div className="flex h-32">
-                                    <div className="w-32 h-full shrink-0">
-                                        <img
-                                            src={zone.image || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=400&h=300'}
-                                            alt={zone.name}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                    <div className="flex-1 p-3 flex flex-col justify-between">
-                                        <div>
-                                            <div className="flex justify-between items-start mb-1">
-                                                <h3 className="text-base font-bold text-gray-900 line-clamp-1">{zone.name}</h3>
-                                                <span className="text-[#3E6950] font-bold text-sm">¥{zone.price}/h</span>
-                                            </div>
-                                            <div className="flex flex-wrap gap-1 mb-2">
-                                                {zone.facilities.slice(0, 3).map((f, idx) => (
-                                                    <span key={idx} className="px-1.5 py-0.5 bg-gray-50 text-gray-500 text-xs rounded">
-                                                        {f}
-                                                    </span>
-                                                ))}
-                                            </div>
+                        {filteredZones.map((zone) => {
+                            // Convert zone to room format expected by store page
+                            const room = {
+                                id: zone.id,
+                                name: zone.name,
+                                image: zone.image || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=400&h=300',
+                                price: zone.price,
+                                availableSeats: zone.availableSeats || 0,
+                                totalSeats: zone.totalSeats || 0,
+                                tags: zone.facilities || [],
+                                description: zone.description || ''
+                            };
+                            const shopId = sessionStorage.getItem('activeShopId');
+                            return (
+                                <div
+                                    key={zone.id}
+                                    onClick={() => navigate(`/store/${shopId}`, { state: { selectedRoom: room } })}
+                                    className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 active:scale-[0.98] transition-all cursor-pointer"
+                                >
+                                    <div className="flex h-32">
+                                        <div className="w-32 h-full shrink-0">
+                                            <img
+                                                src={zone.image || 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=400&h=300'}
+                                                alt={zone.name}
+                                                className="w-full h-full object-cover"
+                                            />
                                         </div>
-                                        <div className="flex items-center justify-between text-xs text-gray-400">
-                                            <span>{zone.description}</span>
+                                        <div className="flex-1 p-3 flex flex-col justify-between">
+                                            <div>
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <h3 className="text-base font-bold text-gray-900 line-clamp-1">{zone.name}</h3>
+                                                    <span className="text-[#3E6950] font-bold text-sm">¥{zone.price}/h</span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-1 mb-2">
+                                                    {zone.facilities.slice(0, 3).map((f, idx) => (
+                                                        <span key={idx} className="px-1.5 py-0.5 bg-gray-50 text-gray-500 text-xs rounded">
+                                                            {f}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between text-xs text-gray-400">
+                                                <span>{zone.description}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
