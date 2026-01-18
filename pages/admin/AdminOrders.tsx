@@ -179,10 +179,12 @@ export const AdminOrders: React.FC = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm">
-                                            <div className="font-medium text-gray-900 mb-0.5">{order.shops?.name || '未知店铺'}</div>
+                                            <div className="font-medium text-gray-900 mb-0.5">
+                                                {order.seats?.zone_name} {order.seats?.label}座
+                                            </div>
                                             <div className="flex items-center gap-2">
                                                 <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[10px] font-bold">
-                                                    {order.seats?.zone_name} {order.seats?.label}座
+                                                    {(order.start_time || '').slice(0, 5)}~{(order.end_time || '').slice(0, 5)}
                                                 </span>
                                             </div>
                                         </td>
