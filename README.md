@@ -80,6 +80,11 @@ studyspace/
 | POST | /api/orders | 创建订单 |
 | GET | /api/orders | 获取订单列表 |
 | PATCH | /api/orders/:id | 更新订单状态 |
+| GET | /#/admin/login | 管理员登录 |
+| GET | /#/admin/dashboard | 管理员首页 |
+| GET | /#/admin/orders | 管理员订单列表 |
+| GET | /#/admin/seats | 管理员座位列表 |
+| GET | /#/admin/reviews | 管理员评价列表 |
 
 ## 📝 注意事项
 
