@@ -50,16 +50,9 @@ export const AdminUsers: React.FC = () => {
     const fetchUsers = async (shopId: string) => {
         try {
             setLoading(true);
-            // Use admin_token for admin panel authentication
-            const token = localStorage.getItem('admin_token');
-            const response = await fetch(`http://localhost:3001/api/users?shop_id=${shopId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            const data = await response.json();
-            if (data.success) {
-                setUsers(data.users);
+            const res = await adminApi.getUsers(shopId);
+            if (res.success) {
+                setUsers(res.users);
             } else {
                 toast.error('获取用户列表失败');
             }

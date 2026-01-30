@@ -510,6 +510,9 @@ export const adminApi = {
             return { success: false, error: err };
         }
     },
+    getUsers: async (shopId: string): Promise<{ success: boolean; users: User[] }> => {
+        return request(`/users?shop_id=${shopId}`, { useAdminToken: true });
+    },
     createUser: async (data: any): Promise<{ success: boolean; user?: any; message?: string }> => {
         return request('/users', { method: 'POST', body: JSON.stringify(data), useAdminToken: true });
     },
